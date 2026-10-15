@@ -1,6 +1,6 @@
 # ADR 002: Fachliche Anforderungen an SVWS-KOOP
 
-- **Status:** Entwurf
+- **Status:** Angenommen
 - **Datum:** 2026-10-15
 - **Autor:** Frank Pfotenhauer
 - **Quelle:** [anforderungen.md](../../anforderungen.md)

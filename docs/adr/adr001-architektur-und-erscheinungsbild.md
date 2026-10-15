@@ -1,6 +1,6 @@
 # ADR 001: Architektur und Erscheinungsbild nach dem Vorbild der SVWS-Tools
 
-- **Status:** Vorgeschlagen
+- **Status:** Angenommen
 - **Datum:** 2026-10-15
 - **Autor:** Frank Pfotenhauer
 
