@@ -1,1 +1,31 @@
+# Abhängigkeiten
+node_modules/
+
+# Build-Ausgabe
+dist/
+dist-ssr/
+release/
+
+# Umgebungsvariablen (enthalten ggf. Zugangsdaten)
 .env
+.env.local
+.env.*.local
+
+# Impressum der Schule (Vorlage: public/impressum.example.js)
+public/impressum.js
+
+# Logs
+npm-debug.log*
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.sw?
+
+# TypeScript-Cache
+*.tsbuildinfo

@@ -1,0 +1,72 @@
+{
+  "name": "svws-koop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "electron:dev": "npm run build && GSETTINGS_SCHEMA_DIR=$HOME/.local/share/electron-schemas electron . --no-sandbox --ozone-platform=x11",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --win nsis",
+    "release": "node scripts/release.mjs",
+    "release:build": "rm -rf release && npm run build && electron-builder --linux AppImage --win nsis --publish never && mkdir -p release && (cd dist && zip -r ../release/SVWS-KOOP-$npm_package_version-webapp.zip .)",
+    "release:github": "gh release create v$npm_package_version --draft --title \"Release $npm_package_version\" --notes \"\" release/SVWS-KOOP-$npm_package_version.AppImage release/SVWS-KOOP-Setup-$npm_package_version.exe release/SVWS-KOOP-$npm_package_version-webapp.zip"
+  },
+  "build": {
+    "appId": "de.skinwalker.svws-koop",
+    "productName": "SVWS KOOP",
+    "artifactName": "SVWS-KOOP-${version}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": "AppImage"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "artifactName": "SVWS-KOOP-Setup-${version}.${ext}",
+      "oneClick": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SVWS-KOOP",
+      "menuCategory": "SVWS"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  },
+  "dependencies": {
+    "@primevue/themes": "^4.5.4",
+    "axios": "^1.8.0",
+    "dompurify": "^3.4.11",
+    "marked": "^18.0.5",
+    "pinia": "^3.0.0",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/node": "^22.15.3",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "electron": "^42.3.1",
+    "electron-builder": "^26.8.1",
+    "typescript": "~5.7.0",
+    "vite": "^6.1.0",
+    "vitest": "^4.1.12",
+    "vue-tsc": "^2.2.0"
+  }
+}

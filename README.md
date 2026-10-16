@@ -8,7 +8,7 @@ SVWS-KOOP gehört zur Familie der [SVWS-Tools](https://github.com/SVWS-NRW/SVWS-
 
 ## Projektstatus
 
-**Konzeptphase.** Architektur und fachliche Anforderungen sind beschlossen ([ADR 001](docs/adr/adr001-architektur-und-erscheinungsbild.md), [ADR 002](docs/adr/adr002-fachliche-anforderungen.md)). Mit der Umsetzung wurde noch nicht begonnen.
+**Projektgerüst steht.** Architektur, fachliche Anforderungen und die Prüfung der SVWS-API sind beschlossen ([ADR 001](docs/adr/adr001-architektur-und-erscheinungsbild.md), [ADR 002](docs/adr/adr002-fachliche-anforderungen.md), [ADR 003](docs/adr/adr003-pruefung-svws-api.md)). Anmeldung an der KOOP-DB, Dashboard, Design und Build funktionieren. Die fachlichen Funktionen (Kacheln) sind noch in Vorbereitung.
 
 ## So funktioniert es
 
@@ -57,14 +57,32 @@ Die Begründungen stehen in [ADR 001](docs/adr/adr001-architektur-und-erscheinun
 
 ## Entwicklung
 
-Geplant nach dem Muster der anderen SVWS-Tools (noch nicht umgesetzt):
+Voraussetzung: Node.js 22+ und ein erreichbarer SVWS-Server.
 
 ```bash
 npm install
-npm run dev        # Dev-Server auf http://localhost:5173
-npm run build      # statisches Bundle → dist/
-npm run test       # Unit-Tests (Vitest)
-npm run release    # AppImage, Windows-Installer und Web-ZIP → release/
+npm run dev            # Dev-Server auf http://localhost:5173
+npm run build          # Typprüfung und statisches Bundle → dist/
+npm run test           # Unit-Tests (Vitest)
+npm run electron:dev   # Desktop-App lokal starten
+npm run release        # Version erhöhen, AppImage, Windows-Installer und Web-ZIP → release/, GitHub-Release-Entwurf
+```
+
+Im Dev-Server laufen alle Anfragen an den SVWS-Server über einen Proxy (`/svws-proxy`), damit CORS und selbstsignierte Zertifikate nicht stören. Die Anmeldemaske lässt sich über eine `.env` vorbelegen, Vorlage: [.env.example](.env.example).
+
+Projektstruktur (ADR 001, Abschnitt 2):
+
+```
+src/
+├── views/        Seiten (Anmeldung, Dashboard)
+├── components/   ThemeToggle, LegalFooter
+├── stores/       Pinia-Stores
+├── services/     apiClient (mehrere Verbindungen), svwsService, errorService
+├── models/       TypeScript-Typen
+├── composables/  useTheme
+├── koop/         Fachlogik, ohne Vue und API, mit Vitest getestet
+└── router/
+electron/main.cjs Electron-Hauptprozess
 ```
 
 ## Dokumentation
