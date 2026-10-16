@@ -10,6 +10,11 @@ const router = createRouter({
       component: () => import('@/views/ConnectView.vue'),
     },
     {
+      path: '/einrichten',
+      name: 'einrichten',
+      component: () => import('@/views/EinrichtenView.vue'),
+    },
+    {
       path: '/',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),

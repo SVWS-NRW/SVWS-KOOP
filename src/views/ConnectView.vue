@@ -54,11 +54,13 @@
         />
         <Button
           type="button"
-          label="Neue KOOP-DB einrichten (in Vorbereitung)"
+          label="Neue KOOP-DB einrichten"
+          icon="pi pi-plus"
           severity="secondary"
           text
-          disabled
+          :disabled="loading"
           class="w-full einrichten"
+          @click="router.push({ name: 'einrichten' })"
         />
       </form>
     </div>

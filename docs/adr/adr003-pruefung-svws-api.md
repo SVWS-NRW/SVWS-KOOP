@@ -44,6 +44,10 @@ Geprüft wurde in zwei Schritten:
 - Body (`BenutzerKennwort`): `{"user": "<DB-Benutzer>", "password": "<Kennwort>"}`. Der Datenbank-Benutzer wird neu angelegt und erhält den administrativen Zugang zum Schema.
 - Im Schema entsteht der SVWS-Benutzer **`Admin` ohne Kennwort**.
 
+**Rückmeldung bei Fehlern (getestet):** `root/create` antwortet auch bei einem Fehlschlag mit HTTP 200. Ob das Anlegen geklappt hat, steht nur im Body (`SimpleOperationResponse`: `success`, `log`). SVWS-KOOP wertet `success` aus und zeigt die Ursache aus dem Log an. Dasselbe gilt vorsorglich für `root/import/sqlite`.
+
+**Datenbank-Benutzer (getestet):** `root/destroy` löscht das Schema, aber nicht den Datenbank-Benutzer. Ein vorhandener Datenbank-Benutzer kann für ein neues Schema weiterverwendet werden, wenn das Kennwort passt. Sonst schlägt `root/create` fehl. SVWS-KOOP prüft das vorab mit `GET /api/schema/root/user/{user}/exists` und `POST /api/schema/root/user/checkpwd` (Body `{"user", "password"}`, Antwort `true`/`false`).
+
 **Initialisieren** (`POST /api/schema/create/{schema}/init/{schulnummer}`):
 
 - Anmeldung mit dem **Datenbank-Benutzer des Schemas** aus dem vorigen Schritt. Mit `Admin` gibt der Server 401 zurück (getestet).

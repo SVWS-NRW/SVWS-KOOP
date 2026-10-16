@@ -40,7 +40,8 @@ export function toAppError(input: unknown, source?: string): AppError {
       id: generateId(),
       type: 'unexpected',
       severity: 'error',
-      messageUser: 'Ein unerwarteter Fehler ist aufgetreten.',
+      // Fehler, die SVWS-KOOP selbst auslöst, haben verständliche Meldungen
+      messageUser: input.message || 'Ein unerwarteter Fehler ist aufgetreten.',
       messageTechnical: input.message,
       timestamp: new Date().toISOString(),
       context: { source },

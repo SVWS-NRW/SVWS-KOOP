@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { erzeugeSchemaClient, entferneAlleClients } from '@/services/apiClient'
+import { KOOP, erzeugeSchemaClient, entferneAlleClients } from '@/services/apiClient'
 import { ladeSchulstammdaten } from '@/services/svwsService'
 
 export interface AuthConfig {
@@ -9,9 +9,6 @@ export interface AuthConfig {
   username: string
   password: string
 }
-
-/** Schlüssel der Verbindung zur KOOP-DB */
-export const KOOP = 'koop'
 
 // Zugangsdaten werden nur im Client (Arbeitsspeicher) gehalten, nie im Store oder Storage (ADR 001, Abschnitt 3)
 export const useAuthStore = defineStore('auth', () => {
