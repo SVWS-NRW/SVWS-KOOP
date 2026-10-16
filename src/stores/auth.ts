@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { KOOP, erzeugeSchemaClient, entferneAlleClients } from '@/services/apiClient'
 import { ladeSchulstammdaten } from '@/services/svwsService'
+import { useQuellenStore } from './quellen'
 
 export interface AuthConfig {
   baseUrl: string
@@ -34,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function disconnect(): void {
     entferneAlleClients()
+    useQuellenStore().zuruecksetzen()
     baseUrl.value = ''
     schema.value = ''
     username.value = ''

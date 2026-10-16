@@ -20,12 +20,18 @@
     </header>
 
     <div class="tile-grid">
-      <div v-for="kachel in kacheln" :key="kachel.titel" class="tile tile--gesperrt">
+      <div
+        v-for="kachel in kacheln"
+        :key="kachel.titel"
+        class="tile"
+        :class="kachel.route ? 'tile--nav' : 'tile--gesperrt'"
+        @click="kachel.route && router.push({ name: kachel.route })"
+      >
         <div class="tile-icon"><i :class="kachel.icon" /></div>
         <div class="tile-body">
           <span class="tile-title">{{ kachel.titel }}</span>
           <span class="tile-sub">{{ kachel.untertitel }}</span>
-          <span class="tile-phase">Phase {{ kachel.phase }} · in Vorbereitung</span>
+          <span class="tile-phase">Phase {{ kachel.phase }}{{ kachel.route ? '' : ' · in Vorbereitung' }}</span>
         </div>
         <i class="pi pi-chevron-right tile-arrow" />
       </div>
@@ -49,12 +55,14 @@ interface Kachel {
   untertitel: string
   icon: string
   phase: string
+  /** Name der Route, fehlt = noch nicht umgesetzt */
+  route?: string
 }
 
 // Kacheln nach ADR 002, Abschnitt „Oberfläche“
 const kacheln: Kachel[] = [
   { titel: 'KOOP-DB einrichten', untertitel: 'Quell-DBs, Zugangsdaten und Benutzer angeben, KOOP-DB anlegen', icon: 'pi pi-database', phase: '1' },
-  { titel: 'Konsistenz prüfen', untertitel: 'Fächer, Oberstufe, Jahrgänge, Klassen und Kataloge vergleichen', icon: 'pi pi-check-square', phase: '1' },
+  { titel: 'Konsistenz prüfen', untertitel: 'Fächer, Oberstufe, Jahrgänge, Klassen und Kataloge vergleichen', icon: 'pi pi-check-square', phase: '1', route: 'konsistenz' },
   { titel: 'Lehrkräfte übernehmen', untertitel: 'Aktive Lehrkräfte mit Kürzel <Kürzel>-<Nr>', icon: 'pi pi-id-card', phase: '1' },
   { titel: 'Schüler übernehmen', untertitel: 'Stammdaten, Erzieher, Sprachenfolge und Fachwahlen', icon: 'pi pi-users', phase: '1' },
   { titel: 'Nachladen', untertitel: 'Neue und abgegangene Schüler und Lehrkräfte abgleichen', icon: 'pi pi-refresh', phase: '1–2' },

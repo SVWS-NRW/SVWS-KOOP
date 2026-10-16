@@ -15,6 +15,11 @@ export type VerbindungsSchluessel = string
 /** Schlüssel der Verbindung zur KOOP-DB */
 export const KOOP: VerbindungsSchluessel = 'koop'
 
+/** Schlüssel der Verbindung zu einer Quell-DB */
+export function quellSchluessel(nr: number): VerbindungsSchluessel {
+  return `quelle-${nr}`
+}
+
 const _clients = new Map<VerbindungsSchluessel, AxiosInstance>()
 
 function istElectron(): boolean {

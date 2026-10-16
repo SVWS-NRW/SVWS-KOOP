@@ -46,7 +46,7 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
   - dem **Fächerkatalog** (Kürzel, Statistikkürzel, Bezeichnung),
   - den **Fächereinstellungen** für die Oberstufe (u. a. Wählbarkeit je Halbjahr, Leitfach, Abiturfach-Eignung, Unterrichtssprache),
   - den **Oberstufeneinstellungen** der betroffenen Abiturjahrgänge (Jahrgangseinstellungen, Fachkombinationen, Fachwahl-Vorlagen),
-  - den **Schuljahresabschnitten** und den **Jahrgängen** einschließlich Schulgliederung, Restabschnitten und Folgejahrgang (ohne Schulgliederung kann der SVWS-Server keinen Abiturjahrgang anlegen, ADR 003),
+  - dem aktuellen **Schuljahresabschnitt** und dem Vorhandensein der **Jahrgänge** 10, EF, Q1 und Q2. Schulgliederung, Statistik-Jahrgang und Restabschnitte werden nicht verglichen, weil sie von der Schulform abhängen und sich zwischen GE und GY unterscheiden dürfen (ADR 003),
   - den **Klassen** der betroffenen Jahrgänge: Die Schulen stellen sicher, dass ihre Klassen gleich heißen. SVWS-KOOP prüft das nur,
   - der **Länge der Lehrerkürzel**: Höchstens 8 Zeichen, damit das Suffix `-<Nr>` in das Kürzelfeld (10 Zeichen) passt,
   - den **Erzieherarten**, damit die Erzieherdaten in der KOOP-DB zugeordnet werden können,

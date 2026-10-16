@@ -28,11 +28,12 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 - [x] Quellschulen in den Schulkatalog eintragen, Benutzer je Schule anlegen
 - [x] Optional: Quell-DB aus SQLite-Datei einspielen
 
-### 2. Konsistenzprüfung
+### 2. Konsistenzprüfung – umgesetzt
 
-- [ ] Vergleich von Fächern, Oberstufeneinstellungen, Jahrgängen (mit Schulgliederung), Klassen, Erzieherarten, Schulkatalog und Länge der Lehrerkürzel
-- [ ] Abweichungen melden und auf Nachfrage korrigieren
-- [ ] Jahrgänge in die KOOP-DB übernehmen (Voraussetzung für den Abiturjahrgang)
+- [x] Vergleich von Fächern, Oberstufeneinstellungen, Jahrgängen (mit Schulgliederung), Klassen, Erzieherarten, Schulkatalog und Länge der Lehrerkürzel
+- [x] Abweichungen melden und auf Nachfrage korrigieren (Jahrgänge, Einstellungen und Fächer der Abiturjahrgänge; übrige Bereiche nur Meldung)
+- [x] Jahrgänge in die KOOP-DB übernehmen (Voraussetzung für den Abiturjahrgang)
+- [ ] Korrektur weiterer Bereiche (Fachkombinationen, Erzieherarten, Schulkatalog), falls mit echten Testdaten nötig
 
 ### 3. Übernahme
 

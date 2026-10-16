@@ -225,12 +225,13 @@ import Message from 'primevue/message'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import LegalFooter from '@/components/LegalFooter.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useQuellenStore } from '@/stores/quellen'
 import { useErrorService, toAppError } from '@/services/errorService'
 import { entferneAlleClients } from '@/services/apiClient'
 import { loescheSchema } from '@/services/schemaService'
 import {
   ladeVorhandeneSchemata, pruefeQuellVerbindung, spieleQuellDateiEin, pruefeAmServer,
-  erzeugeSchritte, generiereKoopDb, erzeugeRootClient, type Schritt, type SchrittStatus,
+  erzeugeSchritte, generiereKoopDb, erzeugeRootClient, quellInfos, type Schritt, type SchrittStatus,
 } from '@/services/einrichtungService'
 import {
   MIN_QUELLEN, MAX_QUELLEN, normalisiereUrl, pruefeServer, pruefeQuellen, pruefeKoop, pruefeBenutzer, pruefeAngaben,
@@ -240,6 +241,7 @@ import {
 const router = useRouter()
 const confirm = useConfirm()
 const auth = useAuthStore()
+const quellenStore = useQuellenStore()
 const { reportError, reportWarning, reportInfo } = useErrorService()
 
 const schrittTitel = ['Server', 'Quell-DBs', 'KOOP-DB', 'Benutzer', 'Prüfen und generieren']
@@ -458,6 +460,7 @@ async function zumDashboard() {
       username: 'Admin',
       password: angaben.koop.adminPassword,
     })
+    quellenStore.uebernehmeAusEinrichtung(quellInfos(angaben.quellen))
     router.push({ name: 'dashboard' })
   } catch (e) {
     reportError(e, 'einrichten:anmelden')

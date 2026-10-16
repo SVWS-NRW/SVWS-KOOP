@@ -80,9 +80,18 @@ Erst danach legt SVWS-KOOP die KOOP-DB an, initialisiert sie und arbeitet dann *
 
 **Kennwörter:** Die KOOP-DB wird zunächst mit `Admin` und leerem Kennwort angelegt. Das Kennwort setzt danach SVWS-KOOP oder der Benutzer. Als `Admin` lassen sich Kennwörter über die API setzen (`POST /db/{schema}/benutzer/{id}/password`, Body: Kennwort als JSON-String). Getestet: Benutzer „Schule1“ angelegt (`POST …/benutzer/new` mit `anzeigename`, `benutzername`, `password`), Adminrechte vergeben (`POST …/benutzer/{id}/addAdmin`), Kennwort geändert, Anmeldung mit neuem Kennwort erfolgreich, mit altem abgelehnt.
 
-**Jahrgänge nach `init` unvollständig (getestet):** Bei den von `init` angelegten Jahrgängen sind **Schulgliederung**, Sekundarstufe, Restabschnitte und Folgejahrgang leer. Ohne Schulgliederung kann der Server kein Abiturjahr berechnen, `abiturjahrgang/new` antwortet dann mit 404. SVWS-KOOP muss die Jahrgänge der KOOP-DB deshalb aus den Quellschulen übernehmen (`PATCH /db/{schema}/jahrgaenge/{id}` mit u. a. `idSchulgliederung`, `anzahlRestabschnitte`, `idFolgejahrgang`). Nach dem Setzen von `idSchulgliederung` ließ sich der Abiturjahrgang 2029 anlegen.
+**Jahrgänge nach `init` unvollständig (getestet):** Bei den von `init` angelegten Jahrgängen sind **Schulgliederung**, Sekundarstufe, Restabschnitte und Folgejahrgang leer. Ohne Schulgliederung kann der Server kein Abiturjahr berechnen, `abiturjahrgang/new` antwortet dann mit 404. Nach dem Setzen von `idSchulgliederung` ließ sich der Abiturjahrgang 2029 anlegen.
 
-Die Quellschulen selbst unterscheiden sich hier ebenfalls: In `gymnasium` hat die EF die Gliederung `GY8`, in `svwsdb` `***`. Die Konsistenzprüfung muss die Jahrgangseinstellungen deshalb einschließlich der Schulgliederung vergleichen (ADR 002, A7).
+Achtung beim Lesen: Ist die Schulgliederung leer (`NULL`), liefert die API den Standard der Schulform, also die ID 0 (`***`, `JahrgangMapper.mapGliederung`). Ein leerer und ein gesetzter Wert `***` sehen über die API gleich aus. Ein PATCH mit `idSchulgliederung: 0` schreibt `***`.
+
+**Schulgliederung hängt von der Schulform ab.** Laut Statistikkatalog des Servers (`GET /types/allinone.json`, Eintrag `Schulgliederung`) gilt z. B. `GY8` (ID 60002001) ab 2024 nur am GY, `GY9` am GY und an der GE, und `***` („Standard für diese Schulform“, ID 0) an allen allgemeinbildenden Schulformen, also auch an GE und GY. Auch die Statistik-Jahrgänge haben je nach Schuljahr verschiedene IDs (z. B. EF 21000000 bis 2022, 21000001 ab 2023).
+
+**Entscheidung:**
+
+- Die Konsistenzprüfung vergleicht bei Jahrgängen nur, ob 10, EF, Q1 und Q2 in allen Quell-DBs vorhanden sind. Schulgliederung, Statistik-Jahrgang und Restabschnitte dürfen sich zwischen den Schulen unterscheiden.
+- Die Jahrgänge der KOOP-DB erhalten immer `***` (`idSchulgliederung: 0`). Damit ist die Gliederung unabhängig davon gültig, ob die KOOP-DB die Schulnummer einer GE oder eines GY trägt. Laut `JahrgaengeUtils.getRestlicheJahre` berechnet der Server mit `***` an GY und GE für EF 3, Q1 2, Q2 1 und Jahrgang 10 4 Restjahre bis zum Abitur. Nur eine fehlende Gliederung (`NULL`) verhindert das.
+- Restabschnitte und Folgejahrgang der KOOP-DB kommen aus der Quell-DB, deren Schulnummer die KOOP-DB trägt (gleiche Schulform).
+- Am Testserver noch zu bestätigen: Anlegen eines Abiturjahrgangs mit `***` in einer frisch angelegten KOOP-DB.
 
 **Backup erstellen** (`GET /api/schema/export/{schema}/sqlite`, getestet): Funktioniert nur mit **Datenbank-Zugangsdaten**, also mit dem Root-Benutzer oder dem Datenbank-Benutzer des Schemas. Mit dem SVWS-Benutzer `Admin` antwortet der Server mit 401. Die Kompetenz „Backup durchführen“ (`EXTRAS_BACKUP_DURCHFUEHREN`) wird von keinem Endpunkt geprüft. Export von `svwsdb`: 30 MB in 12 Sekunden.
 
@@ -149,7 +158,7 @@ Unabhängig davon gilt: Die Schulnummer am Kurs muss im **Schulkatalog** der Dat
 
 ## Konsequenzen
 
-- ADR 002: Fachwahlen je Fach statt per Laufbahnplanungsdatei, Sprachenfolge wird mit übernommen, `koopSchule` in den Leistungsdaten wird gesetzt, Jahrgänge (mit Schulgliederung) werden geprüft und in die KOOP-DB übernommen.
+- ADR 002: Fachwahlen je Fach statt per Laufbahnplanungsdatei, Sprachenfolge wird mit übernommen, `koopSchule` in den Leistungsdaten wird gesetzt, Jahrgänge werden auf Vorhandensein geprüft, in der KOOP-DB mit Schulgliederung `***` vervollständigt.
 - ADR 001: Verbindung mit optionaler Adresse für privilegierte Zugriffe, Ausweichweg über den Admin-Client.
 - Meldungen an das SVWS-Team: `schulnummer` am Kurs (500 statt Speichern), `IDext` in der API (ADR 002, F3), Jahrgänge nach `init` ohne Schulgliederung.
 

@@ -68,3 +68,20 @@ export async function gibAdminrechte(client: AxiosInstance, idBenutzer: number):
 export async function setzeKennwort(client: AxiosInstance, idBenutzer: number, password: string): Promise<void> {
   await client.post(`/benutzer/${idBenutzer}/password`, JSON.stringify(password))
 }
+
+// ── Client-Konfiguration (/client/config/{app}) ─────────────────────────────
+
+/** Name der Anwendung in der Client-Konfiguration des SVWS-Servers */
+export const APP_NAME = 'SVWS-KOOP'
+
+/** Liest einen globalen Eintrag der Client-Konfiguration, oder null, wenn er fehlt */
+export async function ladeKonfiguration(client: AxiosInstance, key: string): Promise<string | null> {
+  const { data } = await client.get(`/client/config/${APP_NAME}`)
+  const eintrag = (data.global as { key: string, value: string }[]).find(e => e.key === key)
+  return eintrag?.value ?? null
+}
+
+/** Schreibt einen globalen Eintrag der Client-Konfiguration (Wert als JSON-String) */
+export async function setzeKonfiguration(client: AxiosInstance, key: string, value: string): Promise<void> {
+  await client.put(`/client/config/${APP_NAME}/global/${encodeURIComponent(key)}`, JSON.stringify(value))
+}

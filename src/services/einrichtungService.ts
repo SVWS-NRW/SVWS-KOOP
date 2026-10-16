@@ -1,19 +1,16 @@
 import type { AxiosInstance } from 'axios'
-import { KOOP, erzeugeSchemaClient, erzeugeServerClient } from '@/services/apiClient'
+import { KOOP, quellSchluessel, erzeugeSchemaClient, erzeugeServerClient } from '@/services/apiClient'
 import {
   ladeSchemaliste, existiertSchema, existiertDbBenutzer, passtDbKennwort, erstelleSchema, initialisiereSchema, importiereSqlite,
 } from '@/services/schemaService'
 import {
   ladeSchulstammdaten, aendereSchulbezeichnung, ladeSchulkatalog, erstelleSchulkatalogEintrag,
-  aendereSchulkatalogEintrag, ladeBenutzerliste, erstelleBenutzer, gibAdminrechte, setzeKennwort,
+  aendereSchulkatalogEintrag, ladeBenutzerliste, erstelleBenutzer, gibAdminrechte, setzeKennwort, setzeKonfiguration,
 } from '@/services/svwsService'
+import { KONFIG_QUELLEN, type QuellInfo } from '@/models/Quelle'
 import { bildeKoopBezeichnung, type EinrichtungsAngaben, type QuellAngaben, type ServerAngaben } from '@/koop/einrichtung'
 
 // Ablauf des Assistenten „KOOP-DB einrichten“ (ADR 003, Abschnitt 1)
-
-export function quellSchluessel(nr: number): string {
-  return `quelle-${nr}`
-}
 
 /** Client für /api/schema/root/… (bei eigenem Port für privilegierte Zugriffe dessen Adresse) */
 export function erzeugeRootClient(server: ServerAngaben): AxiosInstance {
@@ -74,9 +71,15 @@ export function erzeugeSchritte(angaben: EinrichtungsAngaben): Schritt[] {
     { id: 'anmelden', titel: 'Als Admin an der KOOP-DB anmelden', status: 'offen' },
     { id: 'kennzeichnen', titel: 'Schulstammdaten als KOOP-DB kennzeichnen', status: 'offen' },
     { id: 'katalog', titel: 'Quellschulen in den Schulkatalog eintragen', status: 'offen' },
+    { id: 'quellen', titel: 'Quell-DBs in der KOOP-DB vermerken', status: 'offen' },
     { id: 'benutzer', titel: 'Benutzer je Schule anlegen', status: 'offen' },
     { id: 'kennwort', titel: 'Kennwort für Admin setzen', status: 'offen' },
   ]
+}
+
+/** Angaben zu den Quell-DBs ohne Zugangsdaten */
+export function quellInfos(quellen: QuellAngaben[]): QuellInfo[] {
+  return quellen.map(q => ({ nr: q.nr, schema: q.schema, schulNr: q.schulNr!, schulname: q.schulname }))
 }
 
 const MAX_KURZBEZEICHNUNG = 40
@@ -133,6 +136,8 @@ export async function generiereKoopDb(angaben: EinrichtungsAngaben, schritte: Sc
       }
     }
   })
+
+  await fuehreAus('quellen', () => setzeKonfiguration(koopClient!, KONFIG_QUELLEN, JSON.stringify(quellInfos(quellen))))
 
   await fuehreAus('benutzer', async () => {
     for (const b of benutzer) {
