@@ -46,7 +46,7 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
   - dem **Fächerkatalog** (Kürzel, Statistikkürzel, Bezeichnung),
   - den **Fächereinstellungen** für die Oberstufe (u. a. Wählbarkeit je Halbjahr, Leitfach, Abiturfach-Eignung, Unterrichtssprache),
   - den **Oberstufeneinstellungen** der betroffenen Abiturjahrgänge (Jahrgangseinstellungen, Fachkombinationen, Fachwahl-Vorlagen),
-  - den **Schuljahresabschnitten** und den **Jahrgängen**,
+  - den **Schuljahresabschnitten** und den **Jahrgängen** einschließlich Schulgliederung, Restabschnitten und Folgejahrgang (ohne Schulgliederung kann der SVWS-Server keinen Abiturjahrgang anlegen, ADR 003),
   - den **Klassen** der betroffenen Jahrgänge: Die Schulen stellen sicher, dass ihre Klassen gleich heißen. SVWS-KOOP prüft das nur,
   - der **Länge der Lehrerkürzel**: Höchstens 8 Zeichen, damit das Suffix `-<Nr>` in das Kürzelfeld (10 Zeichen) passt,
   - den **Erzieherarten**, damit die Erzieherdaten in der KOOP-DB zugeordnet werden können,
@@ -58,7 +58,8 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
 - **A9** Aus jeder Stammschule werden für die betroffenen Jahrgänge übernommen:
   - die **Schülerstammdaten**,
   - die **Erzieherdaten** (Erziehungsberechtigte),
-  - die **Laufbahnplanung / Fachwahlen** (LuPO-Daten).
+  - die **Laufbahnplanung / Fachwahlen** (LuPO-Daten),
+  - die **Sprachenfolge** (Sprachbelegungen und Sprachprüfungen), weil die Belegprüfung der Laufbahnplanung sie braucht (ADR 003).
 
   Weitere Schülerdaten werden bei Bedarf später ergänzt.
 - **A10** Aus jeder Kooperationsschule werden **alle aktiven Lehrkräfte** in die KOOP-DB übernommen, nicht nur die Lehrkräfte der Oberstufe. Aktiv ist eine Lehrkraft mit **`istSichtbar = true`** (`LehrerListeEintrag` bzw. `LehrerStammdaten`). Platzhalter-Lehrkräfte aus früheren Rückspielungen werden nicht übernommen. Nur so können in der KOOP-DB allen Kursen Lehrkräfte zugeordnet werden, auch von der Partnerschule. Jede Lehrkraft trägt in der KOOP-DB die Schulnummer ihrer Quellschule als **Stammschule**, ihr Kürzel wird um die Nummer der Quellschule ergänzt (z. B. `MÜL-2`).
@@ -83,7 +84,7 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
   - die **Kurse**, in denen Schüler dieser Schule sitzen,
   - die **Leistungsdaten** (Kurszuordnungen) ihrer Schüler im betreffenden Halbjahr,
   - **geänderte Fachwahlen** ihrer Schüler.
-- **A17** Findet ein Kurs an einer Partnerschule statt, wird in der Stammschule bei diesem Kurs die **Schulnummer der Schule eingetragen, an der der Kurs stattfindet** (Feld `schulnummer` der Kursdaten). Bei Kursen an der eigenen Schule bleibt das Feld leer. Welche Schule das ist, ergibt sich aus der **Kurslehrkraft**: Ein Kurs mit der Lehrkraft `BALS-1` gehört zur Schule mit der Nummer 1.
+- **A17** Findet ein Kurs an einer Partnerschule statt, wird in der Stammschule bei diesem Kurs die **Schulnummer der Schule eingetragen, an der der Kurs stattfindet** (Feld `schulnummer` der Kursdaten). Bei Kursen an der eigenen Schule bleibt das Feld leer. Welche Schule das ist, ergibt sich aus der **Kurslehrkraft**: Ein Kurs mit der Lehrkraft `BALS-1` gehört zur Schule mit der Nummer 1. Dieselbe Schulnummer wird auch in den Leistungsdaten der Schüler dieses Kurses gesetzt (Feld `koopSchule`, ADR 003). Hinweis: Die Schulnummer am Kurs lässt sich wegen eines Fehlers im SVWS-Server derzeit nicht über die API schreiben, in den Leistungsdaten funktioniert es (ADR 003, Abschnitt 6).
 - **A18** Es werden **nur** Daten von Schülern der jeweiligen Stammschule geschrieben. Schüler der Partnerschulen gelangen nicht in die Datenbank einer anderen Schule.
 - **A19** Vor dem Schreiben zeigt SVWS-KOOP eine **Vorschau** der Änderungen je Schule. Geschrieben wird erst nach Bestätigung.
 - **A20** Die Rückspielung erzeugt ein Protokoll wie A13.
@@ -122,12 +123,10 @@ Rückspielen  Schema A + Schema KOOP     Schema B + Schema KOOP     Schema C + S
 2. Auf dem KOOP-Server werden die Backups als eigene Schemata eingespielt (`POST /api/schema/root/import/sqlite/{schema}`).
 3. SVWS-KOOP legt die KOOP-DB an (`POST /api/schema/root/create/{schema}`, `POST /api/schema/create/{schema}/init/{schulnummer}`), passt die Schulstammdaten an (A6) und trägt die Quellschulen mit ihrer Nummer in den Schulkatalog ein (`POST /db/{schema}/schule/schulen/create`, A5).
 4. SVWS-KOOP führt die Konsistenzprüfung durch (A7, A8).
-5. SVWS-KOOP überträgt Fächer, Oberstufeneinstellungen und Klassen in die KOOP-DB (nach der Konsistenzprüfung stimmen sie in allen Schulen überein, die Quelle ist daher beliebig) und legt die Abiturjahrgänge an.
+5. SVWS-KOOP überträgt Jahrgänge (die von `init` angelegten Jahrgänge sind unvollständig, ADR 003), Fächer, Oberstufeneinstellungen und Klassen in die KOOP-DB (nach der Konsistenzprüfung stimmen sie in allen Schulen überein, die Quelle ist daher beliebig) und legt die Abiturjahrgänge an.
 6. SVWS-KOOP übernimmt die aktiven Lehrkräfte aller Schulen (`POST /db/{schema}/lehrer/create` mit Kürzel `<Kürzel>-<Nr>`, Stammschule in den Personalabschnittsdaten), dann die Schüler (`POST /db/{schema}/schueler/create`, `externeSchulNr` und `idSchuelerausweis` gesetzt), deren Erzieherdaten (`GET /db/{schema}/schueler/{id}/erzieher` → `POST /db/{schema}/schueler/erzieher/new/{idSchueler}/{pos}`) und schreibt deren Fachwahlen (A9–A13).
 
-Für die Fachwahlen eignen sich die vorhandenen Laufbahnplanungs-Endpunkte:
-`GET /db/{schema}/gost/laufbahnplanung/v2/export` (Stammschule) und
-`POST /db/{schema}/gost/laufbahnplanung/v2/import` bzw. `…/schueler/{id}/laufbahnplanung/v2/daten` (KOOP-DB).
+Schüler werden mit `create` angelegt, alle weiteren Daten über die jeweiligen PATCH-Endpunkte. Fachwahlen werden **je Schüler und Fach** übertragen (`GET …/gost/schueler/{id}/laufbahnplanung` → `PATCH …/gost/schueler/{id}/fachwahl/{fachid}`), Fächer werden über das Kürzel zugeordnet. Der Laufbahnplanung-Import per Datei ist dafür nicht geeignet, weil er Schulnummer, Schüler-IDs und Fach-IDs der Quelldatenbank verlangt (siehe [ADR 003](adr003-pruefung-svws-api.md)).
 
 ### Phase 2: Blockung
 
@@ -162,7 +161,7 @@ Prüfungen vor der Rückspielung:
 
 | Schritt | Wo | Benötigte Rechte |
 |---|---|---|
-| SQLite-Backup erstellen | Datenbank jeder Schule | SVWS-Admin oder Kompetenz „Backup durchführen“ (`EXTRAS_BACKUP_DURCHFUEHREN`) |
+| SQLite-Backup erstellen | Datenbank jeder Schule | über die API (`/api/schema/export/{schema}/sqlite`): Datenbank-Benutzer des Schemas oder Root. Mit SVWS-Admin oder der Kompetenz „Backup durchführen“ geht es über diesen Endpunkt nicht (ADR 003) |
 | Backups einspielen, KOOP-DB anlegen, Schemata löschen | SVWS-Server | Datenbank-Administrator (Endpunkte unter `/api/schema/root/…`) |
 | Konsistenzprüfung, Übernahme, Nachladen, Blockung, Verteilen | KOOP-DB | Benutzer der KOOP-DB, siehe unten |
 | Rückspielung | Datenbank jeder Schule | volle Rechte für Oberstufe und Laufbahnplanung (`OBERSTUFE_LAUFBAHNPLANUNG_*`, `OBERSTUFE_KURSPLANUNG_*` einschließlich `OBERSTUFE_KURSPLANUNG_BLOCKUNG_AKTIVIEREN`) |
@@ -245,7 +244,7 @@ Verworfen: Kurs ohne Lehrkraft. Kurse ohne Lehrkraft fallen in Listen, Plausibil
 
 ### Folgen für ADR 001
 
-Weil alle Schemata, mit denen SVWS-KOOP gleichzeitig arbeitet, auf **einem** SVWS-Server liegen, entfällt das in ADR 001 beschriebene CORS-Problem mit fremden Servern. Die Verbindungsschicht muss mehrere **Schemata** desselben Servers gleichzeitig ansprechen können, nicht mehrere Server. Zusätzlich braucht SVWS-KOOP für Schema-Anlage, SQLite-Import und Schema-Löschung die Zugangsdaten eines **Datenbank-Administrators** (Endpunkte unter `/api/schema/root/…`).
+Weil alle Schemata, mit denen SVWS-KOOP gleichzeitig arbeitet, auf **einem** SVWS-Server liegen, entfällt das in ADR 001 beschriebene CORS-Problem mit fremden Servern. Eine Ausnahme sind die Root-Endpunkte, wenn der SVWS-Server dafür einen eigenen Port verwendet (siehe ADR 003, Abschnitt 2). Die Verbindungsschicht muss mehrere **Schemata** desselben Servers gleichzeitig ansprechen können, nicht mehrere Server. Zusätzlich braucht SVWS-KOOP für Schema-Anlage, SQLite-Import und Schema-Löschung die Zugangsdaten eines **Datenbank-Administrators** (Endpunkte unter `/api/schema/root/…`).
 
 ## Oberfläche (erster Entwurf)
 
@@ -253,7 +252,7 @@ Dashboard mit Kacheln wie in den anderen SVWS-Tools (ADR 001, Abschnitt 4):
 
 | Kachel | Zweck | Phase |
 |---|---|---|
-| **KOOP-DB einrichten** | Kooperationsschulen wählen und durchnummerieren, Backups einspielen, KOOP-DB anlegen und kennzeichnen | 1 |
+| **KOOP-DB einrichten** | Assistent: zuerst alle Angaben abfragen und prüfen (Quell-DBs mit Zugangsdaten und Nummer, Name und Zugangsdaten der KOOP-DB, neue Benutzer je Schule, siehe ADR 003), danach KOOP-DB anlegen und kennzeichnen | 1 |
 | **Konsistenz prüfen** | Abweichungen bei Fächern, Oberstufeneinstellungen, Jahrgängen und Klassen je Schule anzeigen | 1 |
 | **Lehrkräfte übernehmen** | Aktive Lehrkräfte aller Schulen, Vorschau der neuen Kürzel (`<Kürzel>-<Nr>`), Übernahme, Protokoll | 1 |
 | **Schüler übernehmen** | Jahrgänge wählen, Vorschau, Übernahme, Protokoll | 1 |

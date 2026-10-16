@@ -171,6 +171,7 @@ Ob die Schulen tatsächlich gleichzeitig verbunden werden, ob alle Kooperationss
 **Negativ / Risiken**
 - Kopierter Code (Theme, Footer, Tokens, API-Client) muss manuell mit den Schwesterprojekten synchron gehalten werden.
 - **CORS bei mehreren Servern:** Läuft das Web-Bundle unter `/app/koop/` auf dem SVWS-Server einer Schule, sind Zugriffe auf diesen Server same-origin. Zugriffe auf die SVWS-Server **anderer** Schulen sind dagegen Cross-Origin und scheitern ohne CORS-Freigabe auf deren Seite. Die Electron-App ist davon nicht betroffen. Das muss bei der Entscheidung in ADR 002 berücksichtigt werden.
+- **Port für privilegierte Zugriffe:** Verwendet der SVWS-Server für `/api/schema/root/…` einen eigenen Port, ist dieser für das Web-Bundle eine fremde Adresse (CORS). SVWS-KOOP fragt deshalb optional eine zweite Adresse für privilegierte Zugriffe ab. Ist sie nicht erreichbar, werden Schema-Anlage und Backup-Import im Admin-Client des SVWS-Servers erledigt (ADR 003, Abschnitt 2).
 - Ein Benutzer mit Zugängen zu mehreren Schulen hat im Browser Daten mehrerer Schulen gleichzeitig im Speicher. Das ist im Datenschutzkonzept (`docs/datenschutz.md`) zu beschreiben.
 
 ## Offene Fragen
