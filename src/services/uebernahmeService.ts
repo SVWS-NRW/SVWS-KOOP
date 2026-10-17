@@ -25,10 +25,10 @@ export const UEBERNAHME_STATUS = new Set([0, 2, 3])
 const ABITURJAHR_VORLAGE = -1
 
 /**
- * Schreibende Aufrufe laufen nacheinander: Der SVWS-Server vergibt neue IDs ohne Schutz gegen gleichzeitige Anlage,
- * parallele Anlagen scheitern dann mit HTTP 500 (getestet beim Anlegen von Lehrkräften).
+ * Zahl der gleichzeitig bearbeiteten Lehrkräfte bzw. Schüler. Der SVWS-Server hat bei gleichzeitigen Create-Aufrufen
+ * eine Race Condition (HTTP 500), die der API-Client mit Wiederholung und Jitter abfängt (wiederholung.ts, ADR 003).
  */
-const PARALLEL_SCHREIBEN = 1
+const PARALLEL_SCHREIBEN = 4
 
 /** Führt eine Funktion für alle Elemente mit begrenzter Parallelität aus */
 async function parallel<T>(liste: T[], anzahl: number, fn: (e: T, i: number) => Promise<void>): Promise<void> {

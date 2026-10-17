@@ -44,7 +44,7 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 - [x] Schüler (Status Aufnahme, Aktiv, Beurlaubt) mit Stammdaten, allen Erziehern, allen Telefonnummern, Sprachenfolge und Fachwahlen je Fach ab dem aktuellen Halbjahr
 - [x] Wiederholbar, mit Protokoll; abgebrochene Übernahmen werden beim nächsten Lauf vervollständigt
 - [ ] Offen: Fachwahlen vergangener Halbjahre fehlen in der KOOP-DB (Server verlangt dafür Lernabschnitte, ADR 003, Abschnitt 7)
-- [ ] Offen: Dauer verkürzen (gut 13 Minuten für rund 660 Schüler, weil nacheinander geschrieben wird)
+- [x] Dauer verkürzen: parallel schreiben mit Wiederholung und Jitter bei 500 (Race Condition des Servers)
 
 ### 4. Rückspielung (Phase 4)
 
@@ -70,6 +70,8 @@ Diese Punkte hängen nicht von der Umsetzung ab:
   - Schulnummer am Kurs lässt sich nicht setzen (500)
   - `IDext` der Schüler ist nicht über die API erreichbar
   - Jahrgänge haben nach `init` keine Schulgliederung
+  - Hard-Delete für Schüler (`DELETE /schueler/delete/multiple`) fehlt seit Commit `20b579a9d8`
+  - Race Condition bei gleichzeitigen Create-Aufrufen (500)
 - [x] **Blockungs-Testdatenbanken** vorbereiten (2026-10-17, siehe „Testumgebung“): Quell-DBs, die wie eine echte Kooperation zusammenpassen
   - verschiedene Schulnummern (aus dem Schulkatalog, nicht 123456)
   - gleicher Schuljahresabschnitt

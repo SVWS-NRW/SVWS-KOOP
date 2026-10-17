@@ -167,7 +167,7 @@ Unabhängig davon gilt: Die Schulnummer am Kurs muss im **Schulkatalog** der Dat
 
 ## 7. Übernahme in die KOOP-DB (getestet mit `koop_gy`, `koop_ge`, `kooptest`)
 
-- **Nur nacheinander schreiben:** Werden Lehrkräfte parallel angelegt (4 gleichzeitige Anfragen), scheitern viele mit HTTP 500. Der Server vergibt neue IDs offenbar ohne Schutz gegen gleichzeitige Anlage. SVWS-KOOP schreibt deshalb immer nacheinander. Die Übernahme von gut 650 Schülern dauert damit etwa 9 Minuten.
+- **Race Condition beim Anlegen:** Werden Datensätze parallel angelegt (4 gleichzeitige Anfragen), scheitert ein Teil mit HTTP 500, weil der Server neue IDs ohne Sperre aus `Schema_AutoInkremente` vergibt (siehe Konsequenzen, Meldung 5). SVWS-KOOP wiederholt schreibende POST-Aufrufe nach 500 mit zufälliger, wachsender Wartezeit (`wiederholung.ts`, bis zu 5 Versuche) und arbeitet mit 4 parallelen Bearbeitungen. Nacheinander dauerte die Übernahme von rund 660 Schülern knapp 13 Minuten, parallel mit Wiederholung knapp 5 Minuten.
 - **Schüler einer Klasse bzw. eines Abschnitts:** `GET /schueler/abschnitt/{id}` liefert alle Schüler mit Jahrgang, Klasse, Status und `externeSchulNr`. `POST /schueler/stammdaten` mit einer Liste von IDs liefert die Stammdaten gesammelt.
 - **Status:** Übernommen werden Aufnahme (0), Aktiv (2) und Beurlaubt (3), laut Statistikkatalog `SchuelerStatus`. In den Testdaten stehen z. B. über 1.500 Schüler mit Status Abschluss (8) im Jahrgang 10.
 - **Erzieher:** Die API-ID eines Erziehers ist `ID der Datenbankzeile × 10 + Position`. Zwei Erzieher derselben Zeile teilen sich eine Adresse. Position 1 wird mit `POST /schueler/erzieher/new/{idSchueler}/1` angelegt, Position 2 mit `PATCH /erzieher/{id von Position 1}/stammdaten/2`.
@@ -182,7 +182,12 @@ Unabhängig davon gilt: Die Schulnummer am Kurs muss im **Schulkatalog** der Dat
 
 - ADR 002: Fachwahlen je Fach statt per Laufbahnplanungsdatei, Sprachenfolge wird mit übernommen, `koopSchule` in den Leistungsdaten wird gesetzt, Jahrgänge werden auf Vorhandensein geprüft, in der KOOP-DB mit Schulgliederung `***` vervollständigt.
 - ADR 001: Verbindung mit optionaler Adresse für privilegierte Zugriffe, Ausweichweg über den Admin-Client.
-- Meldungen an das SVWS-Team: `schulnummer` am Kurs (500 statt Speichern), `IDext` in der API (ADR 002, F3), Jahrgänge nach `init` ohne Schulgliederung.
+- Meldungen an das SVWS-Team (SVWS-KOOP ändert nichts am SVWS-Server selbst):
+  1. `schulnummer` am Kurs lässt sich nicht setzen (500 statt Speichern, Abschnitt 6).
+  2. `IDext` der Schüler ist nicht über die API erreichbar (ADR 002, F3).
+  3. Jahrgänge haben nach `init` keine Schulgliederung (Abschnitt 1).
+  4. **Hard-Delete für Schüler fehlt:** `DELETE /db/{schema}/schueler/delete/multiple` wurde mit Commit `54cacc0204` (2026-10-12, „Api: Schüler löschen implementieren“) eingeführt und im Commit `20b579a9d8` (2026-10-16, „Refactoring: DataManager im Schülerlernabschnitt zu Services migrieren“) aus `APISchueler.java` entfernt, vermutlich versehentlich. `SchuelerStammdatenService.delete()` und `SchuelerStammdatenControllerImpl.delete()` sind noch vorhanden, es fehlt nur der Endpunkt. Vorhanden ist nur `/softdelete/multiple` (Löschvermerk). SVWS-KOOP braucht den Hard-Delete zum Entfernen abgegangener Schüler aus der KOOP-DB (ADR 002, A21).
+  5. **Race Condition bei gleichzeitigen Create-Aufrufen:** Werden Datensätze gleichzeitig angelegt, antwortet der Server teilweise mit 500. Ursache ist die ID-Vergabe über `Schema_AutoInkremente` ohne Sperre. Mit dem SVWS-Team besprochen (2026-10-17): derzeit nicht änderbar, weil SchILD-NRW 3 direkt auf die MariaDB zugreift. SVWS-KOOP wiederholt schreibende POST-Aufrufe dauerhaft mit Jitter (Abschnitt 7).
 
 ## Offene Punkte
 

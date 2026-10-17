@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios'
+import { mitWiederholung } from './wiederholung'
 
 // SVWS-KOOP arbeitet gleichzeitig mit mehreren Schemata desselben SVWS-Servers
 // (KOOP-DB und Quell-DBs, ADR 001 Abschnitt 9). Jede Verbindung hat einen eigenen Client.
@@ -34,11 +35,11 @@ function erzeugeClient(zugang: Zugang, pfad: string): AxiosInstance {
   }
   if (useProxy) headers['X-Proxy-Target'] = zugang.baseUrl
 
-  return axios.create({
+  return mitWiederholung(axios.create({
     baseURL: (useProxy ? '/svws-proxy' : zugang.baseUrl) + pfad,
     timeout: 30_000,
     headers,
-  })
+  }))
 }
 
 /** Client für die Endpunkte eines Schemas (/db/{schema}/…) */
