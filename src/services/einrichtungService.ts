@@ -8,7 +8,7 @@ import {
   aendereSchulkatalogEintrag, ladeBenutzerliste, erstelleBenutzer, gibAdminrechte, setzeKennwort, setzeKonfiguration,
 } from '@/services/svwsService'
 import { KONFIG_QUELLEN, type QuellInfo } from '@/models/Quelle'
-import { bildeKoopBezeichnung, type EinrichtungsAngaben, type QuellAngaben, type ServerAngaben } from '@/koop/einrichtung'
+import { bildeKoopBezeichnung, initSchulNr, koopSchulnummern, type EinrichtungsAngaben, type QuellAngaben, type ServerAngaben } from '@/koop/einrichtung'
 
 // Ablauf des Assistenten „KOOP-DB einrichten“ (ADR 003, Abschnitt 1)
 
@@ -67,7 +67,7 @@ export interface Schritt {
 export function erzeugeSchritte(angaben: EinrichtungsAngaben): Schritt[] {
   return [
     { id: 'anlegen', titel: `KOOP-DB „${angaben.koop.schema}“ anlegen`, status: 'offen' },
-    { id: 'init', titel: `Schule ${angaben.koop.schulNr} initialisieren`, status: 'offen' },
+    { id: 'init', titel: `Schule ${initSchulNr(angaben.koop)} initialisieren`, status: 'offen' },
     { id: 'anmelden', titel: 'Als Admin an der KOOP-DB anmelden', status: 'offen' },
     { id: 'kennzeichnen', titel: 'Schulstammdaten als KOOP-DB kennzeichnen', status: 'offen' },
     { id: 'katalog', titel: 'Quellschulen in den Schulkatalog eintragen', status: 'offen' },
@@ -79,7 +79,8 @@ export function erzeugeSchritte(angaben: EinrichtungsAngaben): Schritt[] {
 
 /** Angaben zu den Quell-DBs ohne Zugangsdaten */
 export function quellInfos(quellen: QuellAngaben[]): QuellInfo[] {
-  return quellen.map(q => ({ nr: q.nr, schema: q.schema, schulNr: q.schulNr!, schulname: q.schulname }))
+  const nummern = koopSchulnummern(quellen)
+  return quellen.map(q => ({ nr: q.nr, schema: q.schema, schulNr: q.schulNr!, koopSchulNr: nummern[q.nr], schulname: q.schulname }))
 }
 
 const MAX_KURZBEZEICHNUNG = 40
@@ -110,7 +111,7 @@ export async function generiereKoopDb(angaben: EinrichtungsAngaben, schritte: Sc
 
   await fuehreAus('init', () => initialisiereSchema(
     erzeugeServerClient({ baseUrl: server.baseUrl, username: koop.dbUser, password: koop.dbPassword }),
-    koop.schema, koop.schulNr!,
+    koop.schema, initSchulNr(koop)!,
   ))
 
   await fuehreAus('anmelden', async () => {
@@ -122,17 +123,21 @@ export async function generiereKoopDb(angaben: EinrichtungsAngaben, schritte: Sc
 
   await fuehreAus('katalog', async () => {
     const katalog = await ladeSchulkatalog(koopClient!)
-    for (const q of quellen) {
-      const vorhanden = katalog.find(e => e.schulnummerStatistik === String(q.schulNr))
+    // Jede Quellschule bekommt einen eigenen Eintrag (bei Testdaten ggf. mit Ersatznummer, siehe koopSchulnummern)
+    const vergeben = new Set<number>()
+    for (const q of quellInfos(quellen)) {
+      const vorhanden = katalog.find(e => e.schulnummerStatistik === String(q.koopSchulNr) && !vergeben.has(e.id))
       if (vorhanden) {
         await aendereSchulkatalogEintrag(koopClient!, vorhanden.id, { kuerzel: String(q.nr) })
+        vergeben.add(vorhanden.id)
       } else {
-        await erstelleSchulkatalogEintrag(koopClient!, {
-          schulnummerStatistik: String(q.schulNr),
+        const id = await erstelleSchulkatalogEintrag(koopClient!, {
+          schulnummerStatistik: String(q.koopSchulNr),
           kuerzel: String(q.nr),
           kurzbezeichnung: q.schulname.slice(0, MAX_KURZBEZEICHNUNG),
           name: q.schulname.slice(0, MAX_NAME),
         })
+        vergeben.add(id)
       }
     }
   })

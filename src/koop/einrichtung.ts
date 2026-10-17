@@ -11,6 +11,51 @@ const DB_BENUTZER_NAME = /^[A-Za-z][A-Za-z0-9_]{0,31}$/
 const RESERVIERTE_SCHEMATA = new Set(['information_schema', 'mysql', 'performance_schema', 'sys', 'master', 'tempdb', 'model', 'msdb'])
 const RESERVIERTE_DB_BENUTZER = new Set(['root', 'mysql.infoschema', 'mysql.session', 'mysql.sys', 'sa'])
 
+/**
+ * Schulnummer, die das SVWS-Anonymisierungstool vergibt. Nur bei dieser Nummer dürfen mehrere Quell-DBs
+ * dieselbe Schulnummer haben (Testdaten).
+ */
+export const TESTDATEN_SCHULNR = 123456
+
+/**
+ * Ersatz für die KOOP-DB bei Testdaten: TESTDATEN_SCHULNR steht nicht im Schulkatalog des Servers, init würde scheitern.
+ * Ein Gymnasium aus dem Schulkatalog (Engelbert-Kaempfer-Gymnasium).
+ */
+export const TESTDATEN_ERSATZ_SCHULNR = 168890
+
+export function istTestdatenSchulNr(schulNr: number | null): boolean {
+  return schulNr === TESTDATEN_SCHULNR
+}
+
+/**
+ * Schulnummer jeder Quellschule in der KOOP-DB (Schulkatalog, später Merkmal Stammschule).
+ * Normalerweise die echte Schulnummer. Haben bei Testdaten mehrere Quellschulen TESTDATEN_SCHULNR, behält die erste
+ * diese Nummer, die weiteren erhalten die nächsten freien Nummern (123457, …), weil die Schulnummer im Schulkatalog
+ * eindeutig sein muss (K_Schule_UC1) und die Stammschule bei der Rückspielung eindeutig sein soll.
+ */
+export function koopSchulnummern(quellen: { nr: number, schulNr: number | null }[]): Record<number, number> {
+  const ergebnis: Record<number, number> = {}
+  const vergeben = new Set(quellen.map(q => q.schulNr).filter((n): n is number => n !== null && !istTestdatenSchulNr(n)))
+  for (const q of quellen) {
+    if (q.schulNr === null) continue
+    if (!istTestdatenSchulNr(q.schulNr) || !vergeben.has(q.schulNr)) {
+      ergebnis[q.nr] = q.schulNr
+      vergeben.add(q.schulNr)
+      continue
+    }
+    let ersatz = q.schulNr + 1
+    while (vergeben.has(ersatz)) ersatz++
+    ergebnis[q.nr] = ersatz
+    vergeben.add(ersatz)
+  }
+  return ergebnis
+}
+
+/** Schulnummer, mit der die KOOP-DB initialisiert wird */
+export function initSchulNr(koop: KoopAngaben): number | null {
+  return istTestdatenSchulNr(koop.schulNr) ? TESTDATEN_ERSATZ_SCHULNR : koop.schulNr
+}
+
 /** Feldlänge von Bezeichnung1–3 in den Schulstammdaten */
 export const MAX_BEZEICHNUNG = 50
 
@@ -107,7 +152,7 @@ export function pruefeQuellen(quellen: QuellAngaben[], vorhandeneSchemata: strin
     if (q.schulNr === null) {
       fehler.push(`${name}: Die Verbindung wurde noch nicht erfolgreich geprüft.`)
     } else {
-      if (schulnummern.has(q.schulNr)) fehler.push(`${name}: Die Schulnummer ${q.schulNr} kommt mehrfach vor.`)
+      if (schulnummern.has(q.schulNr) && !istTestdatenSchulNr(q.schulNr)) fehler.push(`${name}: Die Schulnummer ${q.schulNr} kommt mehrfach vor.`)
       schulnummern.add(q.schulNr)
     }
   }

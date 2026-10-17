@@ -18,7 +18,7 @@ Der Datenaustausch läuft über SQLite-Backups. Es gibt keine Leitschule, alle K
 
 | Phase | Wo | Was passiert |
 |---|---|---|
-| **1. Zusammenführen** | KOOP-Server (ein SVWS-Server nach Wahl) | Jede Schule liefert ein SQLite-Backup. SVWS-KOOP legt die KOOP-DB an, prüft, ob Fächer, Oberstufeneinstellungen, Klassen und Kataloge übereinstimmen, und übernimmt Schüler (Stammdaten, Erzieherdaten, Fachwahlen) und aktive Lehrkräfte. |
+| **1. Zusammenführen** | KOOP-Server (ein SVWS-Server nach Wahl) | Jede Schule liefert ein SQLite-Backup. SVWS-KOOP legt die KOOP-DB an, prüft, ob Fächer, Oberstufeneinstellungen, Klassen und Kataloge übereinstimmen, und übernimmt Schüler (Stammdaten, Erzieher, Telefonnummern, Sprachenfolge, Fachwahlen) und aktive Lehrkräfte. |
 | **2. Blocken** | KOOP-Server, im SVWS-Client | Die Blockung wird mit den vorhandenen Funktionen des SVWS-Servers erstellt und aktiviert. Fachwahländerungen werden nur noch in der KOOP-DB gepflegt. |
 | **3. Verteilen** | KOOP-Server | SVWS-KOOP vermerkt den Stand und erstellt ein Backup der KOOP-DB für jede Schule. |
 | **4. Zurückspielen** | SVWS-Server jeder Schule | Jede Schule spielt das KOOP-Backup ein. SVWS-KOOP überträgt nach Vorschau und Bestätigung Kurse, Kurszuordnungen und geänderte Fachwahlen der eigenen Schüler in die Datenbank der Schule. Danach wird die KOOP-Kopie gelöscht. |

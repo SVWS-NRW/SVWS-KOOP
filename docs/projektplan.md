@@ -33,13 +33,18 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 - [x] Vergleich von Fächern, Oberstufeneinstellungen, Jahrgängen (mit Schulgliederung), Klassen, Erzieherarten, Schulkatalog und Länge der Lehrerkürzel
 - [x] Abweichungen melden und auf Nachfrage korrigieren (Jahrgänge, Einstellungen und Fächer der Abiturjahrgänge; übrige Bereiche nur Meldung)
 - [x] Jahrgänge in die KOOP-DB übernehmen (Voraussetzung für den Abiturjahrgang)
-- [ ] Korrektur weiterer Bereiche (Fachkombinationen, Erzieherarten, Schulkatalog), falls mit echten Testdaten nötig
+- [x] Fehler und Warnungen unterscheiden, Ergebnisliste zuklappbar
+- [ ] Korrektur weiterer Bereiche (Erzieherarten, Schulkatalog), falls mit echten Testdaten nötig
 
-### 3. Übernahme
+### 3. Übernahme – umgesetzt
 
-- [ ] Lehrkräfte mit Kürzel `<Kürzel>-<Nr>` und Stammschule
-- [ ] Schüler mit Stammdaten, Erzieherdaten, Sprachenfolge und Fachwahlen je Fach
-- [ ] Wiederholbar, mit Protokoll
+- [x] KOOP-DB vorbereiten: Jahrgänge, Fächer, Klassen `10`/`EF`/`Q1`/`Q2`, Abiturjahrgänge mit Einstellungen und Leitfächern
+- [x] Kataloge als Vereinigung: Erzieherarten, Telefonarten, Religionen, Orte, Fahrschülerarten, Haltestellen
+- [x] Lehrkräfte mit Kürzel `<Kürzel>-<Nr>` und Stammschule, ohne Platzhalter
+- [x] Schüler (Status Aufnahme, Aktiv, Beurlaubt) mit Stammdaten, allen Erziehern, allen Telefonnummern, Sprachenfolge und Fachwahlen je Fach ab dem aktuellen Halbjahr
+- [x] Wiederholbar, mit Protokoll; abgebrochene Übernahmen werden beim nächsten Lauf vervollständigt
+- [ ] Offen: Fachwahlen vergangener Halbjahre fehlen in der KOOP-DB (Server verlangt dafür Lernabschnitte, ADR 003, Abschnitt 7)
+- [ ] Offen: Dauer verkürzen (gut 13 Minuten für rund 660 Schüler, weil nacheinander geschrieben wird)
 
 ### 4. Rückspielung (Phase 4)
 
@@ -65,9 +70,30 @@ Diese Punkte hängen nicht von der Umsetzung ab:
   - Schulnummer am Kurs lässt sich nicht setzen (500)
   - `IDext` der Schüler ist nicht über die API erreichbar
   - Jahrgänge haben nach `init` keine Schulgliederung
-- [ ] Weitere Testdaten: `gymnasium` als zweite Quell-DB, eine dritte Quell-DB mit Oberstufe
+- [x] **Blockungs-Testdatenbanken** vorbereiten (2026-10-17, siehe „Testumgebung“): Quell-DBs, die wie eine echte Kooperation zusammenpassen
+  - verschiedene Schulnummern (aus dem Schulkatalog, nicht 123456)
+  - gleicher Schuljahresabschnitt
+  - Klassen `EF`, `Q1`, `Q2` an allen Schulen
+  - einheitliche Fächer (Kürzel, Statistikkürzel, Bezeichnung) und Fächereinstellungen der Abiturjahrgänge
+  - Abiturjahrgänge für 10, EF, Q1, Q2 mit Fachwahlen
+  - gleiche Erzieherarten, Partnerschulen mit Kürzel im Schulkatalog
+- [ ] Testdaten aus echten Kooperationen
 - [ ] Pilotschulen bzw. eine Kooperation als Ansprechpartner finden
 - [ ] Hilfe-Seite unter doku.svws-nrw.de mit dem Projekt SVWS-Dokumentation abstimmen
+
+## Testumgebung
+
+Testserver `https://localhost:8443` (Zugangsdaten in der lokalen `.env`, nicht im Repository). Alle Schemata enthalten Testdaten.
+
+| Schema | Inhalt |
+|---|---|
+| `koop_gy` | Kopie von `gymnasium`, Schulnummer 168890 (Engelbert-Kaempfer-Gymnasium), Abschnitt 2026/1 |
+| `koop_ge` | Kopie von `gesamtschule`, Schulnummer 192806 (Städt. Gesamtschule Barmen), Abschnitt 2026/1, Klassen `EF`/`Q1`/`Q2` |
+| `kooptest` | KOOP-DB aus `koop_gy` (Schule 1) und `koop_ge` (Schule 2), Admin ohne Kennwort, Benutzer `Schule1`/`schule1` und `Schule2`/`schule2` |
+
+`koop_gy` und `koop_ge` sind angeglichen: gleicher Abschnitt, gleiche Klassen der Oberstufe, gemeinsamer Fächerkatalog der Oberstufe (fehlende Fächer in der jeweils anderen Schule angelegt), gleiche Fächereinstellungen und Leitfächer in den Abiturjahrgängen, gleiche Erzieherarten, Partnerschulen mit Kürzel im Schulkatalog (`EKG`, `GEB`). Die Konsistenzprüfung meldet 0 Fehler und 0 Warnungen.
+
+Die Originale `gymnasium`, `gymnasium2`, `gymnasium3` und `gesamtschule` haben alle die Schulnummer 123456 aus dem Anonymisierungstool.
 
 ## Bekannte Einschränkungen
 

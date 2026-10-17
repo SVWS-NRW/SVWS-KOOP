@@ -16,7 +16,8 @@ export const useQuellenStore = defineStore('quellen', () => {
   /** Lädt die Liste der Quell-DBs aus der KOOP-DB */
   async function laden(): Promise<void> {
     const wert = await ladeKonfiguration(getClient(KOOP), KONFIG_QUELLEN)
-    const liste = wert ? (JSON.parse(wert) as QuellInfo[]) : []
+    // Einträge älterer Versionen haben noch keine koopSchulNr
+    const liste = (wert ? (JSON.parse(wert) as QuellInfo[]) : []).map(q => ({ ...q, koopSchulNr: q.koopSchulNr ?? q.schulNr }))
     // Bestehende Anmeldungen bleiben erhalten, solange sich die Quell-DB nicht geändert hat
     const alt = quellen.value
     quellen.value = liste

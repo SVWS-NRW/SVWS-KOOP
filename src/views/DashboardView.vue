@@ -63,8 +63,8 @@ interface Kachel {
 const kacheln: Kachel[] = [
   { titel: 'KOOP-DB einrichten', untertitel: 'Quell-DBs, Zugangsdaten und Benutzer angeben, KOOP-DB anlegen', icon: 'pi pi-database', phase: '1' },
   { titel: 'Konsistenz prüfen', untertitel: 'Fächer, Oberstufe, Jahrgänge, Klassen und Kataloge vergleichen', icon: 'pi pi-check-square', phase: '1', route: 'konsistenz' },
-  { titel: 'Lehrkräfte übernehmen', untertitel: 'Aktive Lehrkräfte mit Kürzel <Kürzel>-<Nr>', icon: 'pi pi-id-card', phase: '1' },
-  { titel: 'Schüler übernehmen', untertitel: 'Stammdaten, Erzieher, Sprachenfolge und Fachwahlen', icon: 'pi pi-users', phase: '1' },
+  { titel: 'Lehrkräfte übernehmen', untertitel: 'Aktive Lehrkräfte mit Kürzel <Kürzel>-<Nr>', icon: 'pi pi-id-card', phase: '1', route: 'uebernahme' },
+  { titel: 'Schüler übernehmen', untertitel: 'Stammdaten, Erzieher, Sprachenfolge und Fachwahlen', icon: 'pi pi-users', phase: '1', route: 'uebernahme' },
   { titel: 'Nachladen', untertitel: 'Neue und abgegangene Schüler und Lehrkräfte abgleichen', icon: 'pi pi-refresh', phase: '1–2' },
   { titel: 'Übersicht KOOP-DB', untertitel: 'Schüler je Stammschule und Jahrgang, Stand der Fachwahlen', icon: 'pi pi-chart-bar', phase: '2' },
   { titel: 'Rückspielen', untertitel: 'Kurse, Leistungsdaten und Fachwahlen in die Stammschule', icon: 'pi pi-reply', phase: '4' },

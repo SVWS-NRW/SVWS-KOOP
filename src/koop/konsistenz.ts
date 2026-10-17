@@ -6,9 +6,18 @@ import { MAX_QUELL_KUERZEL_LAENGE } from './lehrerKuerzel'
 /** Jahrgänge, deren Schüler übernommen werden (ADR 002, A2) */
 export const BETROFFENE_JAHRGAENGE = ['10', 'EF', 'Q1', 'Q2'] as const
 
+/**
+ * Jahrgänge, deren Klassennamen in allen Schulen gleich sein müssen. Die 10 wird für die Planung der kommenden EF
+ * wie eine Jahrgangsstufe behandelt, ihre Klassennamen spielen keine Rolle (ADR 002, Klassen).
+ */
+export const KLASSEN_VERGLEICH = ['EF', 'Q1', 'Q2'] as const
+
+/** Klasse, in die alle Schüler der Jahrgangsstufe 10 in der KOOP-DB kommen */
+export const KOOP_KLASSE_10 = '10'
+
 export type Bereich =
   | 'abschnitt' | 'jahrgaenge' | 'klassen' | 'faecher' | 'abiturjahrgaenge' | 'gostJahrgang'
-  | 'gostFaecher' | 'fachkombinationen' | 'erzieherarten' | 'schulkatalog' | 'lehrerkuerzel'
+  | 'gostFaecher' | 'schulkatalog' | 'lehrerkuerzel'
 
 export const BEREICH_TITEL: Record<Bereich, string> = {
   abschnitt: 'Schuljahresabschnitt',
@@ -18,13 +27,14 @@ export const BEREICH_TITEL: Record<Bereich, string> = {
   abiturjahrgaenge: 'Abiturjahrgänge',
   gostJahrgang: 'Einstellungen der Abiturjahrgänge',
   gostFaecher: 'Fächer der Abiturjahrgänge',
-  fachkombinationen: 'Fachkombinationen',
-  erzieherarten: 'Erzieherarten',
   schulkatalog: 'Schulkatalog',
   lehrerkuerzel: 'Lehrerkürzel',
 }
 
 export type Wert = string | number | boolean | null
+
+/** Fehler verhindern die Übernahme, Warnungen nicht */
+export type Schwere = 'fehler' | 'warnung'
 
 export interface Abweichung {
   bereich: Bereich
@@ -34,6 +44,9 @@ export interface Abweichung {
   merkmal: string
   /** Wert je Nummer der Quellschule, undefined = Objekt fehlt in dieser Schule */
   werte: Record<number, Wert | undefined>
+  schwere: Schwere
+  /** Hinweis, was zu tun ist (bei Warnungen) */
+  hinweis?: string
   /** SVWS-KOOP kann den Wert einer anderen Schule übernehmen (A8) */
   korrigierbar: boolean
   /** Technischer Bezug für die Korrektur */
@@ -77,8 +90,6 @@ export interface GostJahrgangDaten {
   hatZusatzkursSW: boolean
   beginnZusatzkursSW: string | null
   faecher: GostFachDaten[]
-  /** Fachkombinationen als lesbare Schlüssel, siehe fachkombinationSchluessel */
-  fachkombinationen: string[]
 }
 
 export interface Quelldaten {
@@ -91,7 +102,6 @@ export interface Quelldaten {
   klassen: Record<string, string[]>
   faecher: FachDaten[]
   gostJahrgaenge: GostJahrgangDaten[]
-  erzieherarten: string[]
   schulkatalog: { schulnummerStatistik: string | null, kuerzel: string | null }[]
   /** Kürzel der aktiven Lehrkräfte (istSichtbar) */
   lehrerKuerzel: string[]
@@ -132,6 +142,27 @@ export const GOST_FACH_MERKMALE: Record<string, string> = {
 /** Felder, die der SVWS-Server per PATCH nicht ändert: biliSprache ist bei Oberstufenfächern gesperrt (ADR 003) */
 const NICHT_KORRIGIERBAR = new Set(['biliSprache'])
 
+/**
+ * Abweichungen bei diesen Merkmalen sind nur Warnungen. Der Wert wird in der KOOP-DB als Vorgabe für die
+ * KOOP-Blockung im SVWS-Client festgelegt (ADR 002, A7).
+ */
+const VORGABE_KOOP_MERKMALE = new Set(['aufgabenfeld', 'bilingualeSprache', 'biliSprache'])
+export const HINWEIS_VORGABE_KOOP = 'Wert in der KOOP-DB im SVWS-Client als Vorgabe festlegen.'
+
+/**
+ * Abweichungen bei diesen Merkmalen sind Warnungen, die Schulen sollen sie aber in ihren eigenen Datenbanken
+ * vereinheitlichen, wenn sie gemeinsam blocken (ADR 002, A7): Bezeichnung der Fächer und alle Einstellungen
+ * der Fächer der Abiturjahrgänge.
+ */
+const VEREINHEITLICHEN_MERKMALE = new Set(['bezeichnung', ...Object.keys(GOST_FACH_MERKMALE)])
+export const HINWEIS_VEREINHEITLICHEN = 'Die Schulen sollten den Wert in ihren Datenbanken vereinheitlichen.'
+
+function bewerte(feld: string): { schwere: Schwere, hinweis?: string } {
+  if (VORGABE_KOOP_MERKMALE.has(feld)) return { schwere: 'warnung', hinweis: HINWEIS_VORGABE_KOOP }
+  if (VEREINHEITLICHEN_MERKMALE.has(feld)) return { schwere: 'warnung', hinweis: HINWEIS_VEREINHEITLICHEN }
+  return { schwere: 'fehler' }
+}
+
 const GOST_JAHRGANG_MERKMALE = {
   hatZusatzkursGE: 'Zusatzkurs GE',
   beginnZusatzkursGE: 'Beginn Zusatzkurs GE',
@@ -167,7 +198,7 @@ function vergleiche<T>(
     const fehlt = quellen.filter(q => !maps.get(q.nr)!.has(key))
     if (fehlt.length > 0) {
       ergebnis.push({
-        bereich, objekt: objektName(key), merkmal: 'vorhanden', korrigierbar: false,
+        bereich, objekt: objektName(key), merkmal: 'vorhanden', schwere: 'fehler', korrigierbar: false,
         werte: Object.fromEntries(quellen.map(q => [q.nr, maps.get(q.nr)!.has(key) ? 'ja' : undefined])),
       })
       continue
@@ -178,6 +209,7 @@ function vergleiche<T>(
       const bezug = korrektur?.(key, feld)
       ergebnis.push({
         bereich, objekt: objektName(key), merkmal: titel,
+        ...bewerte(feld),
         werte: Object.fromEntries(quellen.map((q, i) => [q.nr, werte[i]])),
         korrigierbar: bezug !== undefined,
         korrektur: bezug,
@@ -194,19 +226,14 @@ function vergleicheMengen(quellen: Quelldaten[], bereich: Bereich, objekt: (eint
   return alle
     .filter(e => quellen.some(q => !mengen.get(q.nr)!.has(e)))
     .map(e => ({
-      bereich, objekt: objekt(e), merkmal: 'vorhanden', korrigierbar: false,
+      bereich, objekt: objekt(e), merkmal: 'vorhanden', schwere: 'fehler' as const, korrigierbar: false,
       werte: Object.fromEntries(quellen.map(q => [q.nr, mengen.get(q.nr)!.has(e) ? 'ja' : undefined])),
     }))
 }
 
-/** Lesbarer Schlüssel einer Fachkombination, unabhängig von IDs der Datenbank */
-export function fachkombinationSchluessel(
-  fach1: string, kursart1: string | null, fach2: string, kursart2: string | null, typ: number, gueltigInHalbjahr: boolean[],
-): string {
-  // GostLaufbahnplanungFachkombinationTyp: 0 = VERBOTEN, 1 = ERFORDERLICH
-  const art = typ === 1 ? 'erfordert' : 'verbietet'
-  const halbjahre = ['EF.1', 'EF.2', 'Q1.1', 'Q1.2', 'Q2.1', 'Q2.2'].filter((_, i) => gueltigInHalbjahr[i]).join(',')
-  return `${fach1}${kursart1 ? ' ' + kursart1 : ''} ${art} ${fach2}${kursart2 ? ' ' + kursart2 : ''} (${halbjahre})`
+/** true, wenn mindestens eine Abweichung die Übernahme verhindert */
+export function hatFehler(abweichungen: Abweichung[]): boolean {
+  return abweichungen.some(a => a.schwere === 'fehler')
 }
 
 // ── Prüfung ──────────────────────────────────────────────────────────────────
@@ -219,7 +246,7 @@ export function pruefeKonsistenz(quellen: Quelldaten[]): Abweichung[] {
   const abschnitte = quellen.map(q => `${q.abschnitt.schuljahr}/${q.abschnitt.schuljahr + 1}, ${q.abschnitt.abschnitt}. Halbjahr`)
   if (!alleGleich(abschnitte)) {
     ergebnis.push({
-      bereich: 'abschnitt', objekt: 'Aktueller Abschnitt', merkmal: 'Schuljahr und Halbjahr', korrigierbar: false,
+      bereich: 'abschnitt', objekt: 'Aktueller Abschnitt', merkmal: 'Schuljahr und Halbjahr', schwere: 'fehler', korrigierbar: false,
       werte: Object.fromEntries(quellen.map((q, i) => [q.nr, abschnitte[i]])),
     })
   }
@@ -227,7 +254,7 @@ export function pruefeKonsistenz(quellen: Quelldaten[]): Abweichung[] {
   ergebnis.push(...vergleiche(quellen, 'jahrgaenge', q => q.jahrgaenge.filter(j => betroffen(j.kuerzel)), j => j.kuerzel,
     k => `Jahrgang ${k}`, JAHRGANG_MERKMALE))
 
-  for (const jg of BETROFFENE_JAHRGAENGE) {
+  for (const jg of KLASSEN_VERGLEICH) {
     ergebnis.push(...vergleicheMengen(quellen, 'klassen', k => `Klasse ${k} (Jahrgang ${jg})`, q => q.klassen[jg] ?? []))
   }
 
@@ -249,11 +276,10 @@ export function pruefeKonsistenz(quellen: Quelldaten[]): Abweichung[] {
     ergebnis.push(...vergleiche(quellen, 'gostFaecher', q => q.gostJahrgaenge.find(g => g.jahrgang === jg)!.faecher, f => f.kuerzel,
       k => `Fach ${k} (${jg})`, GOST_FACH_MERKMALE,
       (fachKuerzel, feld) => NICHT_KORRIGIERBAR.has(feld) ? undefined : { art: 'gostFach', jahrgang: jg, fachKuerzel, feld }))
-    ergebnis.push(...vergleicheMengen(quellen, 'fachkombinationen', k => `${k} (${jg})`,
-      q => q.gostJahrgaenge.find(g => g.jahrgang === jg)!.fachkombinationen))
   }
+  // Fachkombinationen werden nicht verglichen: Sie werden in der KOOP-DB für die KOOP-Blockung angelegt (ADR 002, A7)
 
-  ergebnis.push(...vergleicheMengen(quellen, 'erzieherarten', e => `Erzieherart „${e}“`, q => q.erzieherarten))
+  // Erzieherarten und Telefonarten werden nicht verglichen: Die KOOP-DB erhält ihre Vereinigung (ADR 002, A9)
 
   // Schulkatalog: jede Partnerschule muss mit Kürzel eingetragen sein (für die Platzhalter-Lehrkräfte)
   for (const q of quellen) {
@@ -262,7 +288,7 @@ export function pruefeKonsistenz(quellen: Quelldaten[]): Abweichung[] {
       if (eintrag && eintrag.kuerzel) continue
       ergebnis.push({
         bereich: 'schulkatalog', objekt: `Partnerschule ${partner.schulNr} im Katalog von Schule ${q.nr}`,
-        merkmal: eintrag ? 'Kürzel' : 'vorhanden', korrigierbar: false,
+        merkmal: eintrag ? 'Kürzel' : 'vorhanden', schwere: 'fehler', korrigierbar: false,
         werte: { [q.nr]: eintrag ? null : undefined },
       })
     }
@@ -273,7 +299,7 @@ export function pruefeKonsistenz(quellen: Quelldaten[]): Abweichung[] {
     for (const k of q.lehrerKuerzel.filter(k => k.trim().length > MAX_QUELL_KUERZEL_LAENGE)) {
       ergebnis.push({
         bereich: 'lehrerkuerzel', objekt: `Lehrkraft ${k}`, merkmal: `länger als ${MAX_QUELL_KUERZEL_LAENGE} Zeichen`,
-        korrigierbar: false, werte: { [q.nr]: k },
+        schwere: 'fehler', korrigierbar: false, werte: { [q.nr]: k },
       })
     }
   }

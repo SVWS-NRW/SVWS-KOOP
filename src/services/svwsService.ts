@@ -33,8 +33,10 @@ export async function ladeSchulkatalog(client: AxiosInstance): Promise<Schulkata
   }))
 }
 
-export async function erstelleSchulkatalogEintrag(client: AxiosInstance, eintrag: Omit<SchulkatalogEintrag, 'id'>): Promise<void> {
-  await client.post('/schule/schulen/create', eintrag)
+/** Legt einen Eintrag im Schulkatalog an und liefert seine ID */
+export async function erstelleSchulkatalogEintrag(client: AxiosInstance, eintrag: Omit<SchulkatalogEintrag, 'id'>): Promise<number> {
+  const { data } = await client.post('/schule/schulen/create', eintrag)
+  return data.id
 }
 
 export async function aendereSchulkatalogEintrag(client: AxiosInstance, id: number, aenderung: Partial<Omit<SchulkatalogEintrag, 'id'>>): Promise<void> {

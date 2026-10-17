@@ -83,6 +83,11 @@
 
         <Button v-if="angaben.quellen.length < MAX_QUELLEN" label="Weitere Schule" icon="pi pi-plus" severity="secondary" text @click="neueQuelle" />
 
+        <Message v-if="testdaten" severity="info" :closable="false">
+          Testdaten erkannt (Schulnummer {{ TESTDATEN_SCHULNR }} aus dem Anonymisierungstool). Nur in diesem Fall dürfen mehrere Quell-DBs
+          dieselbe Schulnummer haben. Für echte Kooperationen ist das nicht zulässig.
+        </Message>
+
         <details class="backup">
           <summary>Backup einer Schule einspielen (SQLite-Datei)</summary>
           <p class="hinweis">Die Datei wird als neues Schema auf dem Server eingespielt. Ein vorhandenes Schema gleichen Namens wird ersetzt.</p>
@@ -133,6 +138,10 @@
             <Password id="kadmin" v-model="angaben.koop.adminPassword" :feedback="false" toggleMask />
           </div>
         </div>
+        <Message v-if="istTestdatenSchulNr(angaben.koop.schulNr)" severity="info" :closable="false">
+          Testdaten: Die Schulnummer {{ TESTDATEN_SCHULNR }} stammt aus dem Anonymisierungstool und steht nicht im Schulkatalog.
+          Die KOOP-DB wird deshalb mit der Schulnummer {{ TESTDATEN_ERSATZ_SCHULNR }} (Gymnasium) angelegt.
+        </Message>
         <p class="hinweis">
           Die Schulnummer ist technisch nötig und gibt der Schule keinen Vorrang. Bleibt das Admin-Kennwort leer,
           kann es später gesetzt werden. Die KOOP-DB wird an alle Schulen verteilt, vergeben Sie deshalb eigene Kennwörter.
@@ -165,9 +174,13 @@
         <dl class="zusammenfassung">
           <dt>Server</dt><dd>{{ angaben.server.baseUrl }}</dd>
           <template v-for="q in angaben.quellen" :key="q.nr">
-            <dt>Schule {{ q.nr }}</dt><dd>{{ q.schema }} · {{ q.schulNr }} · {{ q.schulname }}</dd>
+            <dt>Schule {{ q.nr }}</dt>
+            <dd>
+              {{ q.schema }} · {{ q.schulNr }} · {{ q.schulname }}
+              <span v-if="koopNummern[q.nr] !== q.schulNr" class="hinweis">(in der KOOP-DB: {{ koopNummern[q.nr] }}, Testdaten)</span>
+            </dd>
           </template>
-          <dt>KOOP-DB</dt><dd>{{ angaben.koop.schema }} (Schulnummer {{ angaben.koop.schulNr }}, DB-Benutzer {{ angaben.koop.dbUser }})</dd>
+          <dt>KOOP-DB</dt><dd>{{ angaben.koop.schema }} (Schulnummer {{ initSchulNr(angaben.koop) }}, DB-Benutzer {{ angaben.koop.dbUser }})</dd>
           <dt>Benutzer</dt><dd>Admin, {{ angaben.benutzer.map(b => b.benutzername).join(', ') }}</dd>
         </dl>
 
@@ -235,7 +248,8 @@ import {
 } from '@/services/einrichtungService'
 import {
   MIN_QUELLEN, MAX_QUELLEN, normalisiereUrl, pruefeServer, pruefeQuellen, pruefeKoop, pruefeBenutzer, pruefeAngaben,
-  istSchemaNameGueltig, istDbBenutzerGueltig, type EinrichtungsAngaben, type QuellAngaben,
+  istSchemaNameGueltig, istDbBenutzerGueltig, istTestdatenSchulNr, initSchulNr, koopSchulnummern, TESTDATEN_SCHULNR, TESTDATEN_ERSATZ_SCHULNR,
+  type EinrichtungsAngaben, type QuellAngaben,
 } from '@/koop/einrichtung'
 
 const router = useRouter()
@@ -353,9 +367,13 @@ function spieleBackupEin() {
 
 // ── Schritt 3 und 4 ──────────────────────────────────────────────────────────
 
+// Doppelte Schulnummern (nur bei Testdaten möglich) erscheinen nur einmal
 const schulnummerOptionen = computed(() => angaben.quellen
-  .filter(q => q.schulNr !== null)
+  .filter((q, i, alle) => q.schulNr !== null && alle.findIndex(x => x.schulNr === q.schulNr) === i)
   .map(q => ({ label: `${q.schulNr} · ${q.schulname}`, value: q.schulNr })))
+
+const testdaten = computed(() => angaben.quellen.some(q => istTestdatenSchulNr(q.schulNr)))
+const koopNummern = computed(() => koopSchulnummern(angaben.quellen))
 
 /** Benutzer je Quellschule vorbelegen, vorhandene Eingaben bleiben erhalten */
 function bereiteBenutzerVor() {

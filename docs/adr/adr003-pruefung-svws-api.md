@@ -78,6 +78,8 @@ Prüfungen vor der Generierung:
 
 Erst danach legt SVWS-KOOP die KOOP-DB an, initialisiert sie und arbeitet dann **mit dem SVWS-Benutzer `Admin`** weiter. Kennwörter werden nur für die Dauer der Sitzung im Arbeitsspeicher gehalten (ADR 001).
 
+**Testdaten:** Das SVWS-Anonymisierungstool vergibt allen Schulen die Schulnummer 123456. Nur bei dieser Nummer akzeptiert SVWS-KOOP, dass mehrere Quell-DBs dieselbe Schulnummer haben, und zeigt dazu einen Hinweis. Weil 123456 nicht im Schulkatalog des Servers steht und `init` damit scheitern würde, wird die KOOP-DB in diesem Fall mit der Schulnummer eines Gymnasiums angelegt (168890, Engelbert-Kaempfer-Gymnasium). Die Schulnummer im Schulkatalog ist eindeutig (Index `K_Schule_UC1`, getestet: zweiter Eintrag mit 123456 → 500). Deshalb behält in der KOOP-DB die erste Quellschule mit 123456 diese Nummer, weitere erhalten die nächsten freien Nummern (123457, …). Diese Nummer steht im Schulkatalog der KOOP-DB und in der Liste der Quell-DBs (`koopSchulNr`) und dient später als Merkmal Stammschule (`externeSchulNr`), damit die Rückspielung auch mit Testdaten eindeutig ist. Die Quell-DBs selbst bleiben unverändert.
+
 **Kennwörter:** Die KOOP-DB wird zunächst mit `Admin` und leerem Kennwort angelegt. Das Kennwort setzt danach SVWS-KOOP oder der Benutzer. Als `Admin` lassen sich Kennwörter über die API setzen (`POST /db/{schema}/benutzer/{id}/password`, Body: Kennwort als JSON-String). Getestet: Benutzer „Schule1“ angelegt (`POST …/benutzer/new` mit `anzeigename`, `benutzername`, `password`), Adminrechte vergeben (`POST …/benutzer/{id}/addAdmin`), Kennwort geändert, Anmeldung mit neuem Kennwort erfolgreich, mit altem abgelehnt.
 
 **Jahrgänge nach `init` unvollständig (getestet):** Bei den von `init` angelegten Jahrgängen sind **Schulgliederung**, Sekundarstufe, Restabschnitte und Folgejahrgang leer. Ohne Schulgliederung kann der Server kein Abiturjahr berechnen, `abiturjahrgang/new` antwortet dann mit 404. Nach dem Setzen von `idSchulgliederung` ließ sich der Abiturjahrgang 2029 anlegen.
@@ -91,7 +93,7 @@ Achtung beim Lesen: Ist die Schulgliederung leer (`NULL`), liefert die API den S
 - Die Konsistenzprüfung vergleicht bei Jahrgängen nur, ob 10, EF, Q1 und Q2 in allen Quell-DBs vorhanden sind. Schulgliederung, Statistik-Jahrgang und Restabschnitte dürfen sich zwischen den Schulen unterscheiden.
 - Die Jahrgänge der KOOP-DB erhalten immer `***` (`idSchulgliederung: 0`). Damit ist die Gliederung unabhängig davon gültig, ob die KOOP-DB die Schulnummer einer GE oder eines GY trägt. Laut `JahrgaengeUtils.getRestlicheJahre` berechnet der Server mit `***` an GY und GE für EF 3, Q1 2, Q2 1 und Jahrgang 10 4 Restjahre bis zum Abitur. Nur eine fehlende Gliederung (`NULL`) verhindert das.
 - Restabschnitte und Folgejahrgang der KOOP-DB kommen aus der Quell-DB, deren Schulnummer die KOOP-DB trägt (gleiche Schulform).
-- Am Testserver noch zu bestätigen: Anlegen eines Abiturjahrgangs mit `***` in einer frisch angelegten KOOP-DB.
+- Am Testserver bestätigt (2026-10-16): In einer frisch angelegten KOOP-DB mit GE-Schulnummer (192806) und mit GY-Schulnummer (168890) antwortet `abiturjahrgang/new` für die EF ohne Gliederung mit 404. Nach `PATCH idSchulgliederung: 0` steht `***` in der Datenbank, und der Abiturjahrgang 2029 wird angelegt. Die Testdatenbank `gesamtschule` verwendet ebenfalls `***`.
 
 **Backup erstellen** (`GET /api/schema/export/{schema}/sqlite`, getestet): Funktioniert nur mit **Datenbank-Zugangsdaten**, also mit dem Root-Benutzer oder dem Datenbank-Benutzer des Schemas. Mit dem SVWS-Benutzer `Admin` antwortet der Server mit 401. Die Kompetenz „Backup durchführen“ (`EXTRAS_BACKUP_DURCHFUEHREN`) wird von keinem Endpunkt geprüft. Export von `svwsdb`: 30 MB in 12 Sekunden.
 
@@ -118,6 +120,7 @@ Der SVWS-Server kann einen eigenen Port für privilegierte Zugriffe haben (`SVWS
 **Entscheidung:**
 
 - Schüler werden mit `create` angelegt, alle weiteren Daten danach über die jeweiligen PATCH-Endpunkte (u. a. `PATCH …/schueler/{id}/stammdaten` für `externeSchulNr` und `idSchuelerausweis`, Erzieher über `POST …/schueler/erzieher/new/{idSchueler}/{pos}`).
+- Telefonnummern: `GET /db/{schema}/schueler/{id}/telefone`, Anlegen mit `POST /db/{schema}/schueler/{idSchueler}/telefon`. Die Art verweist auf den Katalog `/db/{schema}/schule/telefonarten` (Anlegen: `…/telefonarten/create`), Erzieher auf `/db/{schema}/schule/erzieherarten` (Anlegen: `…/erzieherart/new`). In der KOOP-DB werden beide Kataloge als Vereinigung angelegt und über die Bezeichnung zugeordnet (noch nicht am Testserver geprüft).
 - Die Schüler brauchen nur den **aktuellen, aktiven Lernabschnitt** des Schuljahresabschnitts. Das Aktivieren der Blockung macht der Benutzer in der KOOP-DB selbst.
 
 **Reihenfolge (getestet):** Ein Schüler, der **nach** dem Abiturjahrgang angelegt wurde, erscheint im Abiturjahrgang und kann Fachwahlen erhalten. Die Reihenfolge von Schülern und Abiturjahrgang spielt also keine Rolle, das Nachladen (ADR 002, A21) ist möglich.
@@ -131,6 +134,12 @@ Der SVWS-Server kann einen eigenen Port für privilegierte Zugriffe haben (`SVWS
 - Lesen: `GET /db/{schema}/gost/schueler/{id}/laufbahnplanung`
 - Schreiben: `PATCH /db/{schema}/gost/schueler/{id}/fachwahl/{fachid}` mit `GostSchuelerFachwahl`, z. B. `{"halbjahre": ["S","S","S","S","S","S"], "abiturFach": null}` (getestet)
 - Fächer werden über das **Kürzel** zugeordnet. Dass die Kürzel übereinstimmen, stellt die Konsistenzprüfung sicher.
+
+**Fächer der Abiturjahrgänge (getestet):**
+
+- In `GET …/gost/abiturjahrgang/{j}/faecher` ist `kuerzel` das **Statistik-Kürzel**. Alle Projektkurse heißen dort z. B. `PX`, alle Vertiefungskurse `VX`. Das Kürzel der Schule steht in `kuerzelAnzeige`. SVWS-KOOP ordnet die Fächer deshalb über `kuerzelAnzeige` zu.
+- Die Leitfächer der Projektkurse (`projektKursLeitfach1ID`, `…2ID`) gelten schulweit für das Fach. Im Abiturjahrgang lehnt der PATCH sie ab (400). Geändert werden sie über die Vorlage `PATCH …/gost/abiturjahrgang/-1/fach/{id}`.
+- Die Bezeichnung eines Fachs muss in einer Datenbank eindeutig sein (`POST /faecher/create` → 400 „Die Bezeichnung … wird bereits verwendet“).
 
 **Sprachenfolge:** Die Belegprüfung wertet Sprachbelegungen und Sprachprüfungen aus. Sie werden mit übernommen (`/db/{schema}/schueler/{id}/sprachen/belegungen` und `…/pruefungen`).
 
@@ -155,6 +164,19 @@ Unabhängig davon gilt: Die Schulnummer am Kurs muss im **Schulkatalog** der Dat
 **`restore`** (`GET /db/{schema}/gost/blockungen/{abiturjahr}/{halbjahr}/restore`, Achtung: GET, nicht POST): Getestet mit einem über die API angelegten Kurs (EF, GK Deutsch) und einer Leistung. Der Server legt eine Blockung „Restaurierte Blockung“ mit einem Ergebnis an. Darin liegt der Kurs in Schiene 1, und der Schüler ist dem Kurs zugeordnet. Die Leistungsdaten bleiben unverändert, die Blockung ist nicht aktiv.
 
 **Entscheidung:** Nach der Rückspielung von Kursen und Leistungsdaten ruft SVWS-KOOP in der Stammschule `restore` für das betroffene Halbjahr auf. So hat die Stammschule wieder eine Blockung, mit der sie weiterarbeiten kann (z. B. Hochschreiben in das nächste Halbjahr).
+
+## 7. Übernahme in die KOOP-DB (getestet mit `koop_gy`, `koop_ge`, `kooptest`)
+
+- **Nur nacheinander schreiben:** Werden Lehrkräfte parallel angelegt (4 gleichzeitige Anfragen), scheitern viele mit HTTP 500. Der Server vergibt neue IDs offenbar ohne Schutz gegen gleichzeitige Anlage. SVWS-KOOP schreibt deshalb immer nacheinander. Die Übernahme von gut 650 Schülern dauert damit etwa 9 Minuten.
+- **Schüler einer Klasse bzw. eines Abschnitts:** `GET /schueler/abschnitt/{id}` liefert alle Schüler mit Jahrgang, Klasse, Status und `externeSchulNr`. `POST /schueler/stammdaten` mit einer Liste von IDs liefert die Stammdaten gesammelt.
+- **Status:** Übernommen werden Aufnahme (0), Aktiv (2) und Beurlaubt (3), laut Statistikkatalog `SchuelerStatus`. In den Testdaten stehen z. B. über 1.500 Schüler mit Status Abschluss (8) im Jahrgang 10.
+- **Erzieher:** Die API-ID eines Erziehers ist `ID der Datenbankzeile × 10 + Position`. Zwei Erzieher derselben Zeile teilen sich eine Adresse. Position 1 wird mit `POST /schueler/erzieher/new/{idSchueler}/1` angelegt, Position 2 mit `PATCH /erzieher/{id von Position 1}/stammdaten/2`.
+- **Sprachprüfungen:** `GET` liefert `ersetzteSprache`, beim Anlegen kennt der Server das Feld nicht (400 „unbekanntes Attribut“). Es wird beim Übertragen weggelassen.
+- **Fachwahlen vergangener Halbjahre:** Für ein vergangenes Halbjahr verlangt der Server einen gewerteten Lernabschnitt in diesem Halbjahr (`GostFachwahlService`, sonst 409 „Es konnte keine Fachwahl für die Leistungsdaten gefunden werden“). Weil Schüler in der KOOP-DB nur den aktuellen Lernabschnitt haben, überträgt SVWS-KOOP die Fachwahlen ab dem aktuellen Halbjahr. Belegungen vergangener Halbjahre (z. B. EF bei Schülern der Q1) fehlen in der KOOP-DB, das Protokoll weist darauf hin. Für die Blockung des aktuellen und der folgenden Halbjahre reicht das. Die Belegprüfung der Laufbahnplanung ist in der KOOP-DB für diese Schüler deshalb nicht aussagekräftig.
+- **Fachwahl lesen:** `GET /gost/schueler/{id}/fachwahl/{fachid}` liefert die gespeicherten Kursarten unverändert (`GostSchuelerFachwahl`). SVWS-KOOP liest und schreibt sie je Fach, nur die Fach-IDs werden über das Kürzel übersetzt.
+- **Sprachenfolge:** `POST …/sprachen/belegungen` lässt nur Sprachkürzel zu, die laut Statistikkatalog im Schuljahr Fremdsprachen sind. Ältere Einträge in den Quell-DBs (z. B. `GH`) werden abgelehnt. SVWS-KOOP überspringt einzelne abgelehnte Einträge (Erzieher, Telefonnummern, Sprachen) mit Hinweis im Protokoll, statt den Schüler abzubrechen.
+- **Wiederholung:** Ein erneuter Lauf aktualisiert die Stammdaten bereits übernommener Schüler (erkannt an `externeSchulNr` und Quell-ID). Fachwahlen werden nicht überschrieben (ADR 002, A21), aber nachgeholt, wenn der Schüler in der KOOP-DB noch keine hat.
+- **Kataloge:** Orte mit Leerzeichen am Ende des Namens lehnt `POST /orte/create` ab, sie werden vorher bereinigt. Eine frisch angelegte KOOP-DB enthält bereits rund 6.000 Orte und 11 Religionen.
 
 ## Konsequenzen
 

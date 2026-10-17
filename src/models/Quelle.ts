@@ -3,7 +3,10 @@ export interface QuellInfo {
   /** Nummer der Schule (1–3), Suffix der Lehrerkürzel */
   nr: number
   schema: string
+  /** Schulnummer in der Quell-DB */
   schulNr: number
+  /** Schulnummer in der KOOP-DB, weicht nur bei Testdaten ab (koopSchulnummern) */
+  koopSchulNr: number
   schulname: string
 }
 

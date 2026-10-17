@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { pruefeKonsistenz, fachkombinationSchluessel, type Quelldaten, type GostJahrgangDaten } from './konsistenz'
+import { pruefeKonsistenz, hatFehler, HINWEIS_VEREINHEITLICHEN, type Quelldaten, type GostJahrgangDaten } from './konsistenz'
 
 function gost(jahrgang: string, abiturjahr: number, teil: Partial<GostJahrgangDaten> = {}): GostJahrgangDaten {
   return {
     abiturjahr, jahrgang, hatZusatzkursGE: true, beginnZusatzkursGE: 'Q2.1', hatZusatzkursSW: true, beginnZusatzkursSW: 'Q2.1',
     faecher: [{ kuerzel: 'D', istMoeglichAbiLK: true, istMoeglichAbiGK: true, wochenstundenQualifikationsphase: 3 }],
-    fachkombinationen: [],
     ...teil,
   }
 }
@@ -20,7 +19,6 @@ function schule(nr: number, teil: Partial<Quelldaten> = {}): Quelldaten {
     klassen: { 10: ['10A'], EF: ['EF'], Q1: ['Q1'], Q2: ['Q2'] },
     faecher: [{ kuerzel: 'D', kuerzelStatistik: 'D', bezeichnung: 'Deutsch', istOberstufenFach: true, istFremdsprache: false, aufgabenfeld: '1', bilingualeSprache: null }],
     gostJahrgaenge: [gost('10', 2030), gost('EF', 2029), gost('Q1', 2028), gost('Q2', 2027)],
-    erzieherarten: ['Mutter', 'Vater'],
     schulkatalog: [1, 2, 3].filter(p => p !== nr).map(p => ({ schulnummerStatistik: String(100000 + p), kuerzel: String(p) })),
     lehrerKuerzel: ['MÜL'],
     ...teil,
@@ -54,15 +52,16 @@ describe('pruefeKonsistenz', () => {
       : g)
     const a = pruefeKonsistenz([schule(1), s2])
     expect(a).toHaveLength(1)
-    expect(a[0]).toMatchObject({ merkmal: 'Unterrichtssprache', korrigierbar: false })
+    expect(a[0]).toMatchObject({ merkmal: 'Unterrichtssprache', korrigierbar: false, schwere: 'warnung' })
   })
 
-  it('meldet fehlende Klassen, Fächer und Erzieherarten', () => {
+  it('meldet fehlende Klassen und Fächer, aber keine Erzieherarten', () => {
     const a = pruefeKonsistenz([
       schule(1),
-      schule(2, { klassen: { 10: ['10A', '10B'], EF: ['EF'], Q1: ['Q1'], Q2: ['Q2'] }, faecher: [], erzieherarten: ['Mutter'] }),
+      schule(2, { klassen: { 10: ['10a', '10b'], EF: ['EF', 'EF2'], Q1: ['Q1'], Q2: ['Q2'] }, faecher: [] }),
     ])
-    expect(a.map(x => x.objekt).sort()).toEqual(['Erzieherart „Vater“', 'Fach D', 'Klasse 10B (Jahrgang 10)'])
+    // Klassen der 10 werden nicht verglichen
+    expect(a.map(x => x.objekt).sort()).toEqual(['Fach D', 'Klasse EF2 (Jahrgang EF)'])
     expect(a.every(x => x.merkmal === 'vorhanden' && !x.korrigierbar)).toBe(true)
   })
 
@@ -98,17 +97,39 @@ describe('pruefeKonsistenz', () => {
   })
 
   it('vergleicht drei Schulen', () => {
-    const a = pruefeKonsistenz([schule(1), schule(2), schule(3, { erzieherarten: ['Mutter'] })])
+    const a = pruefeKonsistenz([schule(1), schule(2), schule(3, { klassen: { 10: [], EF: [], Q1: ['Q1'], Q2: ['Q2'] } })])
     expect(a).toHaveLength(1)
     expect(a[0].werte).toEqual({ 1: 'ja', 2: 'ja', 3: undefined })
   })
 })
 
-describe('fachkombinationSchluessel', () => {
-  it('ist unabhängig von IDs lesbar', () => {
-    expect(fachkombinationSchluessel('PH', 'LK', 'M', 'LK', 1, [false, false, true, true, true, true]))
-      .toBe('PH LK erfordert M LK (Q1.1,Q1.2,Q2.1,Q2.2)')
-    expect(fachkombinationSchluessel('E5', null, 'E', null, 0, [true, true, false, false, false, false]))
-      .toBe('E5 verbietet E (EF.1,EF.2)')
+describe('Fehler und Warnungen', () => {
+  it('meldet Aufgabenfeld und Unterrichtssprache der Fächer nur als Warnung', () => {
+    const s2 = schule(2)
+    s2.faecher = s2.faecher.map(f => ({ ...f, aufgabenfeld: '3', bilingualeSprache: 'E' }))
+    const a = pruefeKonsistenz([schule(1), s2])
+    expect(a.map(x => `${x.merkmal}:${x.schwere}`).sort()).toEqual(['Aufgabenfeld:warnung', 'Unterrichtssprache:warnung'])
+    expect(a.every(x => x.hinweis)).toBe(true)
+    expect(hatFehler(a)).toBe(false)
+  })
+
+  it('meldet Bezeichnung und Einstellungen der Fächer der Abiturjahrgänge als Warnung zum Vereinheitlichen', () => {
+    const s2 = schule(2)
+    s2.faecher = s2.faecher.map(f => ({ ...f, bezeichnung: 'Deutsch (Sek II)' }))
+    s2.gostJahrgaenge = s2.gostJahrgaenge.map(g => g.jahrgang === 'EF'
+      ? { ...g, faecher: [{ kuerzel: 'D', istMoeglichAbiLK: false, istMoeglichAbiGK: true, wochenstundenQualifikationsphase: 3 }] }
+      : g)
+    const a = pruefeKonsistenz([schule(1), s2])
+    expect(a.map(x => `${x.merkmal}:${x.schwere}`).sort()).toEqual(['Abitur LK möglich:warnung', 'Bezeichnung:warnung'])
+    expect(a.every(x => x.hinweis === HINWEIS_VEREINHEITLICHEN)).toBe(true)
+    expect(a.find(x => x.merkmal === 'Abitur LK möglich')!.korrigierbar).toBe(true)
+  })
+
+  it('meldet andere Abweichungen als Fehler', () => {
+    const s2 = schule(2)
+    s2.faecher = s2.faecher.map(f => ({ ...f, kuerzelStatistik: 'DX' }))
+    const a = pruefeKonsistenz([schule(1), s2])
+    expect(a[0].schwere).toBe('fehler')
+    expect(hatFehler(a)).toBe(true)
   })
 })

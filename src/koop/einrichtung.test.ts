@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   istSchemaNameGueltig, istDbBenutzerGueltig, normalisiereUrl, pruefeServer, pruefeQuellen,
-  pruefeKoop, pruefeBenutzer, bildeKoopBezeichnung, MAX_BEZEICHNUNG,
+  pruefeKoop, pruefeBenutzer, bildeKoopBezeichnung, MAX_BEZEICHNUNG, TESTDATEN_SCHULNR, TESTDATEN_ERSATZ_SCHULNR, initSchulNr, koopSchulnummern,
   type QuellAngaben, type KoopAngaben,
 } from './einrichtung'
 
@@ -59,6 +59,10 @@ describe('pruefeQuellen', () => {
     expect(fehler.some(f => f.includes('Schulnummer 168890'))).toBe(true)
   })
 
+  it('akzeptiert die Schulnummer des Anonymisierungstools mehrfach (Testdaten)', () => {
+    expect(pruefeQuellen([quelle(1, 'gymnasium', TESTDATEN_SCHULNR), quelle(2, 'svwsdb', TESTDATEN_SCHULNR)], vorhanden)).toEqual([])
+  })
+
   it('verlangt eine geprüfte Verbindung und ein vorhandenes Schema', () => {
     const fehler = pruefeQuellen([quelle(1, 'gibtsnicht', null), quellen[1]], vorhanden)
     expect(fehler.some(f => f.includes('gibt es auf dem Server nicht'))).toBe(true)
@@ -110,5 +114,25 @@ describe('bildeKoopBezeichnung', () => {
     expect(b.bezeichnung1).toContain('KOOP-DB')
     expect(b.bezeichnung2).toBe('Kooperation 123456 / 168890')
     expect(b.bezeichnung3.length).toBeLessThanOrEqual(MAX_BEZEICHNUNG)
+  })
+})
+
+describe('initSchulNr', () => {
+  it('ersetzt die Schulnummer des Anonymisierungstools durch ein Gymnasium aus dem Schulkatalog', () => {
+    expect(initSchulNr(koop({ schulNr: TESTDATEN_SCHULNR }))).toBe(TESTDATEN_ERSATZ_SCHULNR)
+    expect(initSchulNr(koop({ schulNr: 168890 }))).toBe(168890)
+  })
+})
+
+describe('koopSchulnummern', () => {
+  it('übernimmt echte Schulnummern unverändert', () => {
+    expect(koopSchulnummern([quelle(1, 'a', 168890), quelle(2, 'b', 192806)])).toEqual({ 1: 168890, 2: 192806 })
+  })
+
+  it('vergibt bei Testdaten für weitere Schulen mit 123456 die nächsten freien Nummern', () => {
+    expect(koopSchulnummern([quelle(1, 'a', 123456), quelle(2, 'b', 123456), quelle(3, 'c', 123456)]))
+      .toEqual({ 1: 123456, 2: 123457, 3: 123458 })
+    expect(koopSchulnummern([quelle(1, 'a', 123456), quelle(2, 'b', 123457), quelle(3, 'c', 123456)]))
+      .toEqual({ 1: 123456, 2: 123457, 3: 123458 })
   })
 })

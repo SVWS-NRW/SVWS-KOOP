@@ -6,7 +6,7 @@ SVWS-KOOP unterstützt Schulen mit gymnasialer Oberstufe, die ihre Kurse in eine
 
 ## 2. Welche Daten verarbeitet werden
 
-- **Schülerinnen und Schüler** der Jahrgänge 10, EF, Q1 und Q2: Stammdaten, Erzieherdaten, Sprachenfolge und Fachwahlen der Laufbahnplanung
+- **Schülerinnen und Schüler** der Jahrgänge 10, EF, Q1 und Q2: Stammdaten, alle Erzieherdaten, alle Telefonnummern, Sprachenfolge und Fachwahlen der Laufbahnplanung
 - **Lehrkräfte** (aktiv): Individualdaten und Stammschule
 - **Ergebnisse der Blockung**: Kurse und Kurszuordnungen (Leistungsdaten)
 
@@ -18,7 +18,7 @@ Bei der Arbeit mit SVWS-KOOP gelangen Daten einer Schule an die Partnerschulen:
 
 - Die KOOP-DB enthält die Daten aller Kooperationsschulen.
 - Für die Rückspielung erhält jede Schule eine Kopie der KOOP-DB.
-- Mit den Erzieherdaten gelangen auch Adressen und Kontaktdaten der Erziehungsberechtigten an die Partnerschulen.
+- Mit den Erzieherdaten und Telefonnummern gelangen auch Adressen und Kontaktdaten der Schülerinnen, Schüler und Erziehungsberechtigten an die Partnerschulen.
 
 Dafür braucht es eine **Vereinbarung der Kooperationsschulen**, die diesen Austausch regelt. SVWS-KOOP bietet nach Abschluss eines Schrittes an, eingespielte Kopien der Partnerschulen und die KOOP-DB-Kopie zu löschen.
 

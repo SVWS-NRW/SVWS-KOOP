@@ -26,13 +26,20 @@
         Keine Abweichungen. Die Quell-DBs passen zusammen.
       </Message>
       <template v-else>
-        <Message severity="warn" :closable="false">
-          {{ abweichungen.length }} Abweichungen. Die Übernahme ist erst möglich, wenn alle behoben sind.
+        <Message :severity="anzahlFehler > 0 ? 'error' : 'warn'" :closable="false">
+          {{ anzahlFehler }} Fehler, {{ anzahlWarnungen }} Warnungen.
+          <template v-if="anzahlFehler > 0">Die Übernahme ist erst möglich, wenn alle Fehler behoben sind.</template>
+          <template v-else>Die Übernahme ist möglich. Bitte die Warnungen beachten.</template>
           Korrekturen gelten nur für die Kopien auf dem KOOP-Server. Übernehmen Sie sie auch in der eigenen Datenbank der Schule.
         </Message>
 
-        <div v-for="gruppe in gruppen" :key="gruppe.bereich" class="gruppe">
-          <h3>{{ BEREICH_TITEL[gruppe.bereich] }} <span class="anzahl">{{ gruppe.eintraege.length }}</span></h3>
+        <details v-for="gruppe in gruppen" :key="gruppe.bereich" class="gruppe" :open="gruppe.fehler > 0 && gruppe.eintraege.length <= 20">
+          <summary>
+            <span class="gruppe-titel">{{ BEREICH_TITEL[gruppe.bereich] }}</span>
+            <span v-if="gruppe.fehler > 0" class="zaehler fehler">{{ gruppe.fehler }} Fehler</span>
+            <span v-if="gruppe.warnungen > 0" class="zaehler warnung">{{ gruppe.warnungen }} Warnungen</span>
+            <span v-if="gruppe.korrigierbar > 0" class="zaehler">{{ gruppe.korrigierbar }} korrigierbar</span>
+          </summary>
           <table class="tabelle">
             <thead>
               <tr>
@@ -43,8 +50,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(a, i) in gruppe.eintraege" :key="i">
-                <td>{{ a.objekt }}</td>
+              <tr v-for="(a, i) in gruppe.eintraege" :key="i" :class="a.schwere">
+                <td><i :class="a.schwere === 'fehler' ? 'pi pi-times-circle' : 'pi pi-exclamation-triangle'" /> {{ a.objekt }}</td>
                 <td>{{ a.merkmal }}</td>
                 <td v-for="q in quellen.quellen" :key="q.nr" :class="{ fehlt: a.werte[q.nr] === undefined }">
                   {{ zeigeWert(a.werte[q.nr], q.nr in a.werte) }}
@@ -68,12 +75,12 @@
                       @click="korrigiereAbweichung(a)"
                     />
                   </template>
-                  <span v-else class="hinweis">in der Schule beheben</span>
+                  <span v-else class="hinweis">{{ a.hinweis ?? 'in der Schule beheben' }}</span>
                 </td>
               </tr>
             </tbody>
           </table>
-        </div>
+        </details>
       </template>
     </section>
 
@@ -154,8 +161,18 @@ async function pruefe() {
 const gruppen = computed(() => {
   const map = new Map<Bereich, Abweichung[]>()
   for (const a of abweichungen.value) map.set(a.bereich, [...(map.get(a.bereich) ?? []), a])
-  return [...map.entries()].map(([bereich, eintraege]) => ({ bereich, eintraege }))
+  return [...map.entries()].map(([bereich, eintraege]) => ({
+    bereich,
+    // Fehler zuerst
+    eintraege: [...eintraege].sort((x, y) => (x.schwere === y.schwere ? 0 : x.schwere === 'fehler' ? -1 : 1)),
+    fehler: eintraege.filter(a => a.schwere === 'fehler').length,
+    warnungen: eintraege.filter(a => a.schwere === 'warnung').length,
+    korrigierbar: eintraege.filter(a => a.korrigierbar).length,
+  }))
 })
+
+const anzahlFehler = computed(() => abweichungen.value.filter(a => a.schwere === 'fehler').length)
+const anzahlWarnungen = computed(() => abweichungen.value.filter(a => a.schwere === 'warnung').length)
 
 function zeigeWert(wert: Wert | undefined, hatEintrag: boolean): string {
   if (!hatEintrag) return ''
@@ -198,7 +215,7 @@ function korrigiereAbweichung(a: Abweichung) {
 
 // ── Jahrgänge in die KOOP-DB ─────────────────────────────────────────────────
 
-const hatJahrgangsAbweichung = computed(() => abweichungen.value.some(a => a.bereich === 'jahrgaenge'))
+const hatJahrgangsAbweichung = computed(() => abweichungen.value.some(a => a.bereich === 'jahrgaenge' && a.schwere === 'fehler'))
 const uebertraegt = ref(false)
 
 async function uebertrageJahrgaengeInKoop() {
@@ -281,17 +298,38 @@ async function uebertrageJahrgaengeInKoop() {
   color: var(--p-text-muted-color);
 }
 
-.gruppe h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
+.gruppe {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
 }
 
-.anzahl {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--koop-warnung);
-  margin-left: 0.35rem;
+.gruppe summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
+
+.gruppe[open] summary {
+  margin-bottom: 0.6rem;
+}
+
+.gruppe-titel {
+  font-weight: 600;
+}
+
+.zaehler {
+  font-size: 0.78rem;
+  color: var(--p-text-muted-color);
+}
+
+.zaehler.fehler { color: var(--koop-fehler); font-weight: 600; }
+.zaehler.warnung { color: var(--koop-warnung); font-weight: 600; }
+
+.tabelle tr.fehler i { color: var(--koop-fehler); }
+.tabelle tr.warnung i { color: var(--koop-warnung); }
 
 .tabelle {
   width: 100%;

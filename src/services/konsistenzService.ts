@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import {
-  BETROFFENE_JAHRGAENGE, fachkombinationSchluessel, GOST_FACH_MERKMALE,
+  BETROFFENE_JAHRGAENGE, GOST_FACH_MERKMALE,
   type Abweichung, type GostFachDaten, type GostJahrgangDaten, type JahrgangDaten, type Quelldaten, type Wert,
 } from '@/koop/konsistenz'
 
@@ -19,13 +19,20 @@ export interface QuellStand {
   ids: QuellIds
 }
 
+/**
+ * Kürzel eines Fachs in der Liste der Fächer eines Abiturjahrgangs. Dort ist `kuerzel` das Statistik-Kürzel
+ * (alle Projektkurse heißen z. B. PX, alle Vertiefungskurse VX), das Kürzel der Schule steht in `kuerzelAnzeige`.
+ */
+function gostFachKuerzel(f: Record<string, unknown>): string {
+  return (f.kuerzelAnzeige as string | null) || (f.kuerzel as string)
+}
+
 export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr: number, schulname: string): Promise<QuellStand> {
-  const [stammdaten, jahrgaengeRoh, faecherRoh, abiturjahrgaenge, erzieherarten, schulkatalog, lehrer] = await Promise.all([
+  const [stammdaten, jahrgaengeRoh, faecherRoh, abiturjahrgaenge, schulkatalog, lehrer] = await Promise.all([
     client.get('/schule/stammdaten').then(r => r.data),
     client.get('/jahrgaenge/').then(r => r.data as Record<string, unknown>[]),
     client.get('/faecher/').then(r => r.data as Record<string, unknown>[]),
     client.get('/gost/abiturjahrgaenge').then(r => r.data as { abiturjahr: number, jahrgang: string | null }[]),
-    client.get('/schule/erzieherarten').then(r => r.data as { bezeichnung: string }[]),
     client.get('/schule/schulen').then(r => r.data as { schulnummerStatistik: string | null, kuerzel: string | null }[]),
     client.get('/lehrer/').then(r => r.data as { kuerzel: string, istSichtbar: boolean }[]),
   ])
@@ -48,15 +55,13 @@ export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr:
     klassen[jg] = klassenRoh.filter(k => jahrgangKuerzel.get(k.idJahrgang) === jg).map(k => k.kuerzel)
   }
 
-  const fachKuerzel = new Map(faecherRoh.map(f => [f.id as number, f.kuerzel as string]))
 
   const gostJahrgaenge: GostJahrgangDaten[] = []
   const gostIds: QuellIds['gost'] = {}
   for (const a of abiturjahrgaenge.filter(a => a.jahrgang !== null && (BETROFFENE_JAHRGAENGE as readonly string[]).includes(a.jahrgang))) {
-    const [daten, faecher, kombis] = await Promise.all([
+    const [daten, faecher] = await Promise.all([
       client.get(`/gost/abiturjahrgang/${a.abiturjahr}`).then(r => r.data),
       client.get(`/gost/abiturjahrgang/${a.abiturjahr}/faecher`).then(r => r.data as Record<string, unknown>[]),
-      client.get(`/gost/abiturjahrgang/${a.abiturjahr}/fachkombinationen`).then(r => r.data as Record<string, unknown>[]),
     ])
     gostJahrgaenge.push({
       abiturjahr: a.abiturjahr,
@@ -66,17 +71,12 @@ export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr:
       hatZusatzkursSW: daten.hatZusatzkursSW,
       beginnZusatzkursSW: daten.beginnZusatzkursSW ?? null,
       faecher: faecher.map(f => {
-        const eintrag: GostFachDaten = { kuerzel: f.kuerzel as string }
+        const eintrag: GostFachDaten = { kuerzel: gostFachKuerzel(f) }
         for (const merkmal of Object.keys(GOST_FACH_MERKMALE)) eintrag[merkmal] = (f[merkmal] as Wert) ?? null
         return eintrag
       }),
-      fachkombinationen: kombis.map(k => fachkombinationSchluessel(
-        fachKuerzel.get(k.fachID1 as number) ?? `Fach-ID ${k.fachID1}`, k.kursart1 as string | null,
-        fachKuerzel.get(k.fachID2 as number) ?? `Fach-ID ${k.fachID2}`, k.kursart2 as string | null,
-        k.typ as number, k.gueltigInHalbjahr as boolean[],
-      )),
     })
-    gostIds[a.jahrgang!] = { abiturjahr: a.abiturjahr, faecher: Object.fromEntries(faecher.map(f => [f.kuerzel as string, f.id as number])) }
+    gostIds[a.jahrgang!] = { abiturjahr: a.abiturjahr, faecher: Object.fromEntries(faecher.map(f => [gostFachKuerzel(f), f.id as number])) }
   }
 
   return {
@@ -95,7 +95,6 @@ export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr:
         bilingualeSprache: (f.bilingualeSprache as string | null) ?? null,
       })),
       gostJahrgaenge,
-      erzieherarten: erzieherarten.map(e => e.bezeichnung),
       schulkatalog: schulkatalog.map(s => ({ schulnummerStatistik: s.schulnummerStatistik, kuerzel: s.kuerzel })),
       lehrerKuerzel: lehrer.filter(l => l.istSichtbar).map(l => l.kuerzel),
     },
@@ -108,6 +107,9 @@ export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr:
 }
 
 // ── Korrektur ────────────────────────────────────────────────────────────────
+
+/** Abiturjahr der allgemeinen Vorlage für die gymnasiale Oberstufe */
+const ABITURJAHR_VORLAGE = -1
 
 /** Übersetzt einen Wert aus der Vergleichsdarstellung (Kürzel) in den Wert für den PATCH der Ziel-DB (ID) */
 function patchFeldUndWert(feld: string, wert: Wert, ziel: QuellIds): { feld: string, wert: Wert } {
@@ -143,7 +145,10 @@ export async function korrigiere(abweichung: Abweichung, vonNr: number, staende:
     } else {
       const gost = stand.ids.gost[bezug.jahrgang] ?? fehlt(`Abiturjahrgang (${bezug.jahrgang})`)
       const id = gost.faecher[bezug.fachKuerzel] ?? fehlt(`Fach ${bezug.fachKuerzel}`)
-      await client.patch(`/gost/abiturjahrgang/${gost.abiturjahr}/fach/${id}`, { [feld]: patchWert })
+      // Leitfächer der Projektkurse gelten schulweit für das Fach und werden über die Vorlage (Abiturjahr -1) geändert,
+      // im Abiturjahrgang lehnt der Server sie ab (DataGostFaecher)
+      const abiturjahr = feld.startsWith('projektKursLeitfach') ? ABITURJAHR_VORLAGE : gost.abiturjahr
+      await client.patch(`/gost/abiturjahrgang/${abiturjahr}/fach/${id}`, { [feld]: patchWert })
     }
   }
 }

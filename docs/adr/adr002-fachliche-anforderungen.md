@@ -43,23 +43,25 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
 ### Konsistenzprüfung
 
 - **A7** Vor der Übernahme prüft SVWS-KOOP, ob alle beteiligten Datenbanken übereinstimmen in:
-  - dem **Fächerkatalog** (Kürzel, Statistikkürzel, Bezeichnung),
-  - den **Fächereinstellungen** für die Oberstufe (u. a. Wählbarkeit je Halbjahr, Leitfach, Abiturfach-Eignung, Unterrichtssprache),
-  - den **Oberstufeneinstellungen** der betroffenen Abiturjahrgänge (Jahrgangseinstellungen, Fachkombinationen, Fachwahl-Vorlagen),
+  - dem **Fächerkatalog** (Kürzel, Statistikkürzel, Fremdsprache; Abweichungen bei der **Bezeichnung** sind Warnungen, die Schulen sollten sie in ihren Datenbanken vereinheitlichen). Abweichungen bei **Aufgabenfeld** und **Unterrichtssprache** sind nur Warnungen: Der Wert wird in der KOOP-DB vom Benutzer im SVWS-Client als Vorgabe für die KOOP-Blockung festgelegt,
+  - den **Fächereinstellungen** der Abiturjahrgänge (u. a. Wählbarkeit je Halbjahr, Leitfach, Abiturfach-Eignung, Wochenstunden). Abweichungen sind **Warnungen**: Wer gemeinsam blockt, sollte diese Einstellungen in den Datenbanken der Schulen vereinheitlichen. Die Unterrichtssprache wird in der KOOP-DB festgelegt (siehe oben),
+  - den **Oberstufeneinstellungen** der betroffenen Abiturjahrgänge (Jahrgangseinstellungen). **Fachkombinationen** werden nicht verglichen: Sie werden vom Benutzer in der KOOP-DB für die KOOP-Blockung angelegt, weil die Oberstufenblockung in den Datenbanken der Schulen bei einer Kooperation nicht genutzt wird,
   - dem aktuellen **Schuljahresabschnitt** und dem Vorhandensein der **Jahrgänge** 10, EF, Q1 und Q2. Schulgliederung, Statistik-Jahrgang und Restabschnitte werden nicht verglichen, weil sie von der Schulform abhängen und sich zwischen GE und GY unterscheiden dürfen (ADR 003),
-  - den **Klassen** der betroffenen Jahrgänge: Die Schulen stellen sicher, dass ihre Klassen gleich heißen. SVWS-KOOP prüft das nur,
+  - den **Klassen** der EF, Q1 und Q2: Die Schulen stellen sicher, dass ihre Klassen gleich heißen (in der Praxis `EF`, `Q1`, `Q2` an allen Schulen). SVWS-KOOP prüft das nur. Die Klassen der 10 werden nicht verglichen, weil die 10 für die Planung der kommenden EF wie eine Jahrgangsstufe behandelt wird. In der KOOP-DB kommen alle Schüler der 10 in eine Klasse `10`,
   - der **Länge der Lehrerkürzel**: Höchstens 8 Zeichen, damit das Suffix `-<Nr>` in das Kürzelfeld (10 Zeichen) passt,
-  - den **Erzieherarten**, damit die Erzieherdaten in der KOOP-DB zugeordnet werden können,
   - dem **Schulkatalog** jeder Schule: Jede Partnerschule muss dort mit Schulnummer und **Kürzel** eingetragen sein, weil das Kürzel für die Platzhalter-Lehrkräfte gebraucht wird (siehe „Lehrkraft der Partnerschule in der Stammschule“).
-- **A8** Abweichungen werden als **Meldungen** je Schule angezeigt. Zu jeder Abweichung, die SVWS-KOOP beheben kann, **fragt** es, ob es sie korrigieren soll, und korrigiert erst nach Bestätigung. Welcher Wert gilt, wählt der Benutzer je Abweichung, denn es gibt keine Leitschule. Die Übernahme ist erst möglich, wenn alle Abweichungen behoben sind. Korrigiert wird in Phase 1 nur die eingespielte Kopie einer Schule auf dem KOOP-Server. Damit die Rückspielung passt, muss die Schule dieselbe Korrektur in ihrer eigenen Datenbank vornehmen. SVWS-KOOP weist darauf hin und prüft vor der Rückspielung erneut (Phase 4).
+- **A8** Abweichungen werden als **Meldungen** je Schule angezeigt, unterteilt in **Fehler** und **Warnungen**. Nur Fehler verhindern die Übernahme. Zu jeder Abweichung, die SVWS-KOOP beheben kann, **fragt** es, ob es sie korrigieren soll, und korrigiert erst nach Bestätigung. Welcher Wert gilt, wählt der Benutzer je Abweichung, denn es gibt keine Leitschule. Die Übernahme ist erst möglich, wenn alle Abweichungen behoben sind. Korrigiert wird in Phase 1 nur die eingespielte Kopie einer Schule auf dem KOOP-Server. Damit die Rückspielung passt, muss die Schule dieselbe Korrektur in ihrer eigenen Datenbank vornehmen. SVWS-KOOP weist darauf hin und prüft vor der Rückspielung erneut (Phase 4).
 
 ### Übernahme
 
 - **A9** Aus jeder Stammschule werden für die betroffenen Jahrgänge übernommen:
   - die **Schülerstammdaten**,
-  - die **Erzieherdaten** (Erziehungsberechtigte),
+  - **alle Erzieherdaten** (Erziehungsberechtigte),
+  - **alle Telefonnummern**,
   - die **Laufbahnplanung / Fachwahlen** (LuPO-Daten),
   - die **Sprachenfolge** (Sprachbelegungen und Sprachprüfungen), weil die Belegprüfung der Laufbahnplanung sie braucht (ADR 003).
+
+  Die Kataloge **Erzieherarten** und **Telefonarten** müssen in den Schulen nicht übereinstimmen. Die KOOP-DB erhält ihre Vereinigung (Zuordnung über die Bezeichnung).
 
   Weitere Schülerdaten werden bei Bedarf später ergänzt.
 - **A10** Aus jeder Kooperationsschule werden **alle aktiven Lehrkräfte** in die KOOP-DB übernommen, nicht nur die Lehrkräfte der Oberstufe. Aktiv ist eine Lehrkraft mit **`istSichtbar = true`** (`LehrerListeEintrag` bzw. `LehrerStammdaten`). Platzhalter-Lehrkräfte aus früheren Rückspielungen werden nicht übernommen. Nur so können in der KOOP-DB allen Kursen Lehrkräfte zugeordnet werden, auch von der Partnerschule. Jede Lehrkraft trägt in der KOOP-DB die Schulnummer ihrer Quellschule als **Stammschule**, ihr Kürzel wird um die Nummer der Quellschule ergänzt (z. B. `MÜL-2`).
@@ -265,7 +267,7 @@ Dashboard mit Kacheln wie in den anderen SVWS-Tools (ADR 001, Abschnitt 4):
 
 - Bei diesem Ablauf liegen vollständige Datenbanken der Partnerschulen und eine KOOP-DB mit Schülern und Lehrkräften aller Schulen auf fremden Servern. Dafür braucht es eine Rechtsgrundlage bzw. Vereinbarung der Kooperationsschulen. Das ist organisatorisch zu klären und in `docs/datenschutz.md` zu beschreiben.
 - Die eingespielten Backups der Partnerschulen und das KOOP-Schema an jeder Schule werden nach Abschluss des jeweiligen Schritts gelöscht. SVWS-KOOP bietet das aktiv an.
-- In die KOOP-DB werden nur festgelegte Datenbereiche übernommen: bei Schülern Stammdaten, Erzieherdaten und Fachwahlen, bei Lehrkräften Individualdaten und Stammschule. Jede Erweiterung ist zu begründen und hier zu ergänzen. Mit den Erzieherdaten gelangen auch Adressen und Kontaktdaten der Erziehungsberechtigten an die Partnerschulen. Das muss die Vereinbarung der Kooperationsschulen abdecken.
+- In die KOOP-DB werden nur festgelegte Datenbereiche übernommen: bei Schülern Stammdaten, alle Erzieherdaten, alle Telefonnummern, Sprachenfolge und Fachwahlen, bei Lehrkräften Individualdaten und Stammschule. Jede Erweiterung ist zu begründen und hier zu ergänzen. Mit den Erzieherdaten und Telefonnummern gelangen auch Adressen und Kontaktdaten der Schüler und Erziehungsberechtigten an die Partnerschulen. Das muss die Vereinbarung der Kooperationsschulen abdecken.
 
 ## Geklärte Fragen
 
@@ -280,7 +282,7 @@ Dashboard mit Kacheln wie in den anderen SVWS-Tools (ADR 001, Abschnitt 4):
 - **Übernommene Lehrerdaten (F6, 2026-10-15):** Individualdaten und aus den Personaldaten die Stammschule. Weitere Daten werden bei Bedarf ergänzt.
 - **Lehrkräfte an mehreren Schulen (F4, 2026-10-15):** Werden in der KOOP-DB einmal je Quellschule geführt, nicht zusammengeführt, weil der Unterricht der Lehrkraft an der jeweiligen Schule zugeordnet werden muss. Der Fall ist sehr selten.
 - **Kurse an der Partnerschule (2026-10-15):** `SchulNr` des Kurses enthält die Schulnummer der Schule, an der der Kurs stattfindet.
-- **Klassen (2026-10-15):** Die Schulen stellen sicher, dass ihre Klassen gleich heißen. SVWS-KOOP prüft das in der Konsistenzprüfung.
+- **Klassen (2026-10-15, ergänzt 2026-10-17):** Die Schulen stellen sicher, dass die Klassen der EF, Q1 und Q2 gleich heißen. SVWS-KOOP prüft das in der Konsistenzprüfung. Die Klassennamen der 10 sind nicht relevant, in der KOOP-DB gibt es für die 10 eine Klasse `10`.
 - **Lehrkräfte (2026-10-15):** Alle aktiven Lehrkräfte aller Kooperationsschulen werden in die KOOP-DB übernommen.
 - **Abweichungen (F1, 2026-10-15):** SVWS-KOOP meldet Abweichungen und fragt, ob es sie korrigieren soll.
 - **Änderungen in der Stammschule (F8, 2026-10-15):** Fachwahlen werden zwischen Übernahme und Rückspielung nur in der KOOP-DB geändert, das fordert die Anleitung. Der Zeitpunkt der letzten Rückspielung wird in der Datenbank der Schule gespeichert. SVWS-KOOP warnt bei einem zu alten KOOP-Backup und bei Fachwahlen, die in der Stammschule geändert wurden (siehe „Änderungen außerhalb der KOOP-DB“).
@@ -288,7 +290,11 @@ Dashboard mit Kacheln wie in den anderen SVWS-Tools (ADR 001, Abschnitt 4):
 - **KOOP-Server (F11, 2026-10-15):** Es gibt keine Leitschule. Phase 1–3 laufen auf einem SVWS-Server nach Wahl der Kooperation.
 - **Neue und abgehende Schüler (F9, 2026-10-15):** Es gibt eine Funktion zum Nachladen (A21).
 - **Rechte (F10, 2026-10-15):** Backups mit Admin- oder Backup-Rechten, sonst volle Oberstufen- und Laufbahnrechte. In der KOOP-DB wird für jede Schule ein Benutzer mit hohen Rechten angelegt, möglichst Administrator (siehe „Benutzer und Rechte“).
-- **Übernommene Schülerdaten (F2, 2026-10-15):** Stammdaten, Erzieherdaten und Fachwahlen. Weitere Daten werden bei Bedarf ergänzt.
+- **Aufgabenfeld und Unterrichtssprache (2026-10-17):** Abweichungen sind Warnungen. Die Werte legt der Benutzer in der KOOP-DB im SVWS-Client als Vorgabe für die KOOP-Blockung fest.
+- **Bezeichnung der Fächer und Fächer der Abiturjahrgänge (2026-10-17):** Abweichungen sind Warnungen. Die Schulen sollten diese Werte in ihren Datenbanken vereinheitlichen, wenn sie gemeinsam blocken.
+- **Fachkombinationen (2026-10-17):** Werden nicht verglichen, sondern vom Benutzer in der KOOP-DB für die KOOP-Blockung angelegt. Die Oberstufenblockung der Schuldatenbanken wird bei einer Kooperation nicht genutzt.
+- **Übernommene Schülerdaten (F2, 2026-10-15, ergänzt 2026-10-17):** Stammdaten, alle Erzieherdaten, alle Telefonnummern und Fachwahlen. Weitere Daten werden bei Bedarf ergänzt.
+- **Erzieherarten und Telefonarten (2026-10-17):** Müssen in den Schulen nicht übereinstimmen. Die KOOP-DB erhält die Vereinigung der Kataloge aller Quellschulen. Erzieher- und Telefondaten werden über die Bezeichnung der Art zugeordnet.
 - **Aktive Lehrkräfte (F7, 2026-10-15):** Aktiv ist eine Lehrkraft mit `istSichtbar = true`.
 
 ## Offene Fragen
