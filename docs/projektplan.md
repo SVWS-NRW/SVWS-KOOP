@@ -73,15 +73,16 @@ Vorarbeiten:
 - [x] Kachel „Verteilen“: `stand` setzen, SQLite-Backup der KOOP-DB herunterladen (`/db/{schema}/export/sqlite`, Admin reicht)
 - [ ] In `kooptest` Lehrkräfte an Blockungskursen zuordnen und die Blockungen erneut aktivieren
 
-Rückspielung:
-- [ ] Anmeldung an der Datenbank der Schule, Erkennung der Quellschule über die Schulnummer
-- [ ] Vorschau mit Fehlern, Warnungen und Hinweisen je Abiturjahrgang und Halbjahr, Zuordnung von Kursen ohne eindeutige Lehrkraft
-- [ ] Eigene Kurse und Leistungsdaten der Schule unverändert lassen, Konflikte (gleiches Fach, gleiches Kurskürzel) melden, eigene Blockungen der Schule deutlich warnen
-- [ ] Angelegte Kurse, Leistungsdaten und Blockung in der Schule vermerken, bei erneuter Rückspielung nur diese ersetzen
-- [ ] Platzhalter-Lehrkräfte je Partnerschule anlegen
-- [ ] Fachwahlen ab dem aktuellen Halbjahr schreiben
-- [ ] Kurse und Leistungsdaten mit `koopSchule` schreiben, `restore` (nicht bei eigener Blockung der Schule)
-- [ ] `letzteRueckspielung` speichern, Protokoll, Hinweis auf das Löschen des KOOP-Schemas
+Rückspielung – umgesetzt, Vorschau am Testserver geprüft, Schreiben noch ungetestet:
+- [x] Anmeldung an der Datenbank der Schule, Erkennung der Quellschule über die Schulnummer
+- [x] Vorschau mit Fehlern, Warnungen und Hinweisen je Abiturjahrgang und Halbjahr, Zuordnung von Kursen ohne eindeutige Lehrkraft (einzeln und gesammelt)
+- [x] Eigene Kurse und Leistungsdaten der Schule unverändert lassen, Konflikte (gleiches Fach, gleiches Kurskürzel) melden, eigene Blockungen der Schule deutlich warnen
+- [x] Angelegte Kurse, Leistungsdaten und Blockung in der Schule vermerken, bei erneuter Rückspielung nur diese ersetzen
+- [x] Platzhalter-Lehrkräfte je Partnerschule anlegen
+- [x] Fachwahlen ab dem aktuellen Halbjahr schreiben, Prüfsummen vergleichen
+- [x] Kurse und Leistungsdaten mit `koopSchule` schreiben, `restore` (nicht bei eigener Blockung der Schule)
+- [x] `letzteRueckspielung` speichern, Protokoll, Hinweis auf das Löschen des KOOP-Schemas
+- [ ] Schreiben an vollständigen Testdatenbanken prüfen (Kurse mit Lehrkräften, Schulen ohne eigene Oberstufenkurse)
 
 ### 5. Abrunden
 

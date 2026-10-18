@@ -51,6 +51,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/rueckspielen',
+      name: 'rueckspielen',
+      component: () => import('@/views/RueckspielenView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/connect',
     },

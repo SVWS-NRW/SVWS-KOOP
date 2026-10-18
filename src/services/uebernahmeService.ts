@@ -271,8 +271,35 @@ export async function uebernehmeLehrkraefte(koop: AxiosInstance, quellen: QuellK
 
 // ── 3. Schüler ───────────────────────────────────────────────────────────────
 
+/** Fachwahl eines Schülers in einem Fach mit der ID des Fachs in dieser Datenbank */
+export interface GeleseneFachwahl {
+  fachID: number
+  kuerzel: string
+  wahl: Fachwahl
+}
+
 /**
- * Liest die Fachwahlen eines Schülers je Fach aus der Quell-DB und überträgt sie unverändert in die KOOP-DB, Fächer über
+ * Liest die Fachwahlen eines Schülers je Fach (`/gost/schueler/{id}/fachwahl/{fachid}`), nur Fächer mit einer Belegung
+ * oder einem Abiturfach. Übernahme und Rückspielung lesen gleich, damit die Prüfsummen vergleichbar sind (ADR 004).
+ */
+export async function leseFachwahlen(client: AxiosInstance, idSchueler: number, faecher: Map<number, string>): Promise<GeleseneFachwahl[]> {
+  const ergebnis: GeleseneFachwahl[] = []
+  const laufbahn = await client.get(`/gost/schueler/${idSchueler}/laufbahnplanung`, { validateStatus: st => st === 200 || st === 404 })
+  for (const fb of (laufbahn.status === 200 ? laufbahn.data.fachbelegungen : []) as Roh[]) {
+    if (!fb.abiturFach && !(fb.belegungen as (Roh | null)[]).some(b => b !== null)) continue
+    const wahl = await get<Fachwahl>(client, `/gost/schueler/${idSchueler}/fachwahl/${fb.fachID}`)
+    ergebnis.push({ fachID: fb.fachID, kuerzel: faecher.get(fb.fachID) ?? `#${fb.fachID}`, wahl })
+  }
+  return ergebnis
+}
+
+/** Fachwahlen als Eingabe für die Prüfsumme */
+export function alsFachwahlEintraege(fachwahlen: GeleseneFachwahl[]): FachwahlEintrag[] {
+  return fachwahlen.map(f => ({ kuerzel: f.kuerzel, halbjahre: f.wahl.halbjahre, abiturFach: f.wahl.abiturFach }))
+}
+
+/**
+ * Liest die Fachwahlen eines Schülers aus der Quell-DB und überträgt sie unverändert in die KOOP-DB, Fächer über
  * das Kürzel zugeordnet (ADR 003). Vergangene Halbjahre bleiben leer. Mit `schreiben = false` wird nur gelesen.
  * Liefert die Zahl der übertragenen Fächer und die gelesenen Fachwahlen für die Prüfsumme (ADR 004, Abschnitt 1).
  */
@@ -282,14 +309,9 @@ async function uebertrageFachwahlen(
 ): Promise<{ fachwahlen: number, eintraege: FachwahlEintrag[] }> {
   let fachwahlen = 0
   let entfernt = 0
-  const eintraege: FachwahlEintrag[] = []
-  const laufbahn = await quelle.get(`/gost/schueler/${quellId}/laufbahnplanung`, { validateStatus: st => st === 200 || st === 404 })
-  for (const fb of (laufbahn.status === 200 ? laufbahn.data.fachbelegungen : []) as Roh[]) {
-    if (!fb.abiturFach && !(fb.belegungen as (Roh | null)[]).some(b => b !== null)) continue
-    const kuerzel = quellFaecher.get(fb.fachID) ?? `#${fb.fachID}`
-    const wahl = await get<Fachwahl>(quelle, `/gost/schueler/${quellId}/fachwahl/${fb.fachID}`)
-    eintraege.push({ kuerzel, halbjahre: wahl.halbjahre, abiturFach: wahl.abiturFach })
-    if (!schreiben) continue
+  const gelesen = await leseFachwahlen(quelle, quellId, quellFaecher)
+  const eintraege = alsFachwahlEintraege(gelesen)
+  for (const { kuerzel, wahl } of schreiben ? gelesen : []) {
     const zielFach = koopFaecher.get(kuerzel)
     if (zielFach === undefined) { protokoll.add('hinweis', 'Schüler', `${name}: Fach ${kuerzel} fehlt in der KOOP-DB`); continue }
     const fuerKoop = fachwahlFuerKoop(wahl, jahrgang, abschnitt)

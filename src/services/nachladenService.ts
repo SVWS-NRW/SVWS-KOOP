@@ -196,7 +196,8 @@ export async function entferneAbgegangene(koop: AxiosInstance, abgleich: SchulAb
             await koop.patch(`/kurse/${k.id}`, { lehrer: null })
             protokoll.add('aktualisiert', 'Kurse', `${l.kuerzel} als Kurslehrkraft von ${k.kuerzel} entfernt`)
           }
-          if ((k.weitereLehrer as number[] ?? []).includes(l.id)) {
+          // weitereLehrer enthält KursLehrer-Objekte, gelöscht wird über die ID der Lehrkraft
+          if (((k.weitereLehrer ?? []) as { idLehrer: number }[]).some(w => w.idLehrer === l.id)) {
             await koop.delete(`/kurse/${k.id}/kursLehrer/delete/multiple`, { data: [l.id] })
             protokoll.add('aktualisiert', 'Kurse', `${l.kuerzel} als weitere Lehrkraft von ${k.kuerzel} entfernt`)
           }
