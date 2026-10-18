@@ -73,7 +73,7 @@ Vorarbeiten:
 - [x] Kachel „Verteilen“: `stand` setzen, SQLite-Backup der KOOP-DB herunterladen (`/db/{schema}/export/sqlite`, Admin reicht)
 - [ ] In `kooptest` Lehrkräfte an Blockungskursen zuordnen und die Blockungen erneut aktivieren
 
-Rückspielung – umgesetzt, Vorschau am Testserver geprüft, Schreiben noch ungetestet:
+Rückspielung – umgesetzt, am Testserver mit `koop_ge` und `koop_gy` geprüft:
 - [x] Anmeldung an der Datenbank der Schule, Erkennung der Quellschule über die Schulnummer
 - [x] Vorschau mit Fehlern, Warnungen und Hinweisen je Abiturjahrgang und Halbjahr, Zuordnung von Kursen ohne eindeutige Lehrkraft (einzeln und gesammelt)
 - [x] Eigene Kurse und Leistungsdaten der Schule unverändert lassen, Konflikte (gleiches Fach, gleiches Kurskürzel) melden, eigene Blockungen der Schule deutlich warnen
@@ -82,7 +82,8 @@ Rückspielung – umgesetzt, Vorschau am Testserver geprüft, Schreiben noch ung
 - [x] Fachwahlen ab dem aktuellen Halbjahr schreiben, Prüfsummen vergleichen
 - [x] Kurse und Leistungsdaten mit `koopSchule` schreiben, `restore` (nicht bei eigener Blockung der Schule)
 - [x] `letzteRueckspielung` speichern, Protokoll, Hinweis auf das Löschen des KOOP-Schemas
-- [ ] Schreiben an vollständigen Testdatenbanken prüfen (Kurse mit Lehrkräften, Schulen ohne eigene Oberstufenkurse)
+- [x] Schreiben geprüft (2026-10-18): Fachwahlen, Platzhalter, Kurse, Leistungsdaten mit `koopSchule`, `restore`, Vermerk und Ersetzen bei erneuter Rückspielung
+- [ ] An vollständigen Testdatenbanken prüfen: Kurse mit Lehrkräften beider Schulen, weitere Lehrkräfte, Schulen ohne eigene Oberstufenkurse, viele Schüler
 
 ### 5. Abrunden
 

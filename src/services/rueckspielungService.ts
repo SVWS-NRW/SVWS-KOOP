@@ -536,7 +536,7 @@ export async function spieleZurueck(schule: AxiosInstance, v: Vorschau, auswahl:
     try {
       fortschritt(`Platzhalter ${ph.kuerzel} anlegen`)
       const neu = (await schule.post('/lehrer/create', {
-        kuerzel: ph.kuerzel, nachname: ph.name.slice(0, 120), vorname: 'Kooperation', geschlecht: 6, personalTyp: 'EXTERN',
+        kuerzel: ph.kuerzel, nachname: ph.name.trim().slice(0, 120), vorname: 'Kooperation', geschlecht: 6, personalTyp: 'EXTERN',
         istSichtbar: true, istRelevantFuerStatistik: false,
       })).data
       platzhalterIds.set(ph.nr, neu.id)
