@@ -260,8 +260,7 @@ Dashboard mit Kacheln wie in den anderen SVWS-Tools (ADR 001, Abschnitt 4):
 | Kachel | Zweck | Phase |
 |---|---|---|
 | **Konsistenz prüfen** | Abweichungen bei Fächern, Oberstufeneinstellungen, Jahrgängen und Klassen je Schule anzeigen | 1 |
-| **Lehrkräfte übernehmen** | Aktive Lehrkräfte aller Schulen, Vorschau der neuen Kürzel (`<Kürzel>-<Nr>`), Übernahme, Protokoll | 1 |
-| **Schüler übernehmen** | Jahrgänge wählen, Vorschau, Übernahme, Protokoll | 1 |
+| **Übernahme** | Drei aufeinander aufbauende Schritte auf einer Seite: KOOP-DB vorbereiten (Jahrgänge, Fächer, Klassen, Abiturjahrgänge, Kataloge), aktive Lehrkräfte aller Schulen mit Kürzel `<Kürzel>-<Nr>`, Schüler der Jahrgänge 10 bis Q2. Je Schritt ein Protokoll | 1 |
 | **Nachladen** | Neueres Backup einer Schule mit der KOOP-DB vergleichen, neue Schüler und Lehrkräfte nachladen, abgegangene Schüler entfernen | 1–2 |
 | **Übersicht KOOP-DB** | Schüler je Stammschule und Jahrgang, Stand der Fachwahlen, Link zur Blockung im SVWS-Client | 2 |
 | **Verteilen** | Stand festhalten, Backup der KOOP-DB für die Schulen erstellen (ADR 004) | 3 |

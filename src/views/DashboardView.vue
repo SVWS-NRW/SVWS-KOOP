@@ -62,8 +62,7 @@ interface Kachel {
 // Kacheln nach ADR 002, Abschnitt „Oberfläche“. „KOOP-DB einrichten“ ist keine Kachel, der Assistent startet auf der Anmeldeseite.
 const kacheln: Kachel[] = [
   { titel: 'Konsistenz prüfen', untertitel: 'Fächer, Oberstufe, Jahrgänge, Klassen und Kataloge vergleichen', icon: 'pi pi-check-square', phase: '1', route: 'konsistenz' },
-  { titel: 'Lehrkräfte übernehmen', untertitel: 'Aktive Lehrkräfte mit Kürzel <Kürzel>-<Nr>', icon: 'pi pi-id-card', phase: '1', route: 'uebernahme' },
-  { titel: 'Schüler übernehmen', untertitel: 'Stammdaten, Erzieher, Sprachenfolge und Fachwahlen', icon: 'pi pi-users', phase: '1', route: 'uebernahme' },
+  { titel: 'Übernahme', untertitel: 'KOOP-DB vorbereiten, Lehrkräfte und Schüler mit Erziehern, Sprachenfolge und Fachwahlen übernehmen', icon: 'pi pi-users', phase: '1', route: 'uebernahme' },
   { titel: 'Nachladen', untertitel: 'Neue und abgegangene Schüler und Lehrkräfte abgleichen', icon: 'pi pi-refresh', phase: '1–2', route: 'nachladen' },
   { titel: 'Übersicht KOOP-DB', untertitel: 'Schulen, Stufen und Lehrkräfte, Fachwahlen und Blockungen', icon: 'pi pi-chart-bar', phase: '2', route: 'uebersicht' },
   { titel: 'Verteilen', untertitel: 'Stand festhalten und Backup der KOOP-DB für die Schulen erstellen', icon: 'pi pi-share-alt', phase: '3', route: 'verteilen' },
