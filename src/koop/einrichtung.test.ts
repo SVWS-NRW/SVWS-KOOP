@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  initAbschnitt,
   istSchemaNameGueltig, istDbBenutzerGueltig, normalisiereUrl, pruefeServer, pruefeQuellen,
   pruefeKoop, pruefeBenutzer, bildeKoopBezeichnung, MAX_BEZEICHNUNG, TESTDATEN_SCHULNR, TESTDATEN_ERSATZ_SCHULNR, initSchulNr, koopSchulnummern,
   type QuellAngaben, type KoopAngaben,
@@ -137,5 +138,14 @@ describe('koopSchulnummern', () => {
       .toEqual({ 1: 123456, 2: 123457, 3: 123458 })
     expect(koopSchulnummern([quelle(1, 'a', 123456), quelle(2, 'b', 123457), quelle(3, 'c', 123456)]))
       .toEqual({ 1: 123456, 2: 123457, 3: 123458 })
+  })
+})
+
+describe('initAbschnitt', () => {
+  it('folgt der Datumsregel des SVWS-Servers', () => {
+    expect(initAbschnitt(new Date(2026, 9, 18))).toEqual({ schuljahr: 2026, abschnitt: 1 }) // Oktober
+    expect(initAbschnitt(new Date(2027, 1, 15))).toEqual({ schuljahr: 2026, abschnitt: 1 }) // Februar
+    expect(initAbschnitt(new Date(2027, 2, 1))).toEqual({ schuljahr: 2026, abschnitt: 2 }) // März
+    expect(initAbschnitt(new Date(2027, 7, 1))).toEqual({ schuljahr: 2027, abschnitt: 1 }) // August
   })
 })

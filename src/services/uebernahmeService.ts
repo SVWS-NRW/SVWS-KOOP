@@ -67,6 +67,23 @@ export async function ladeAbschnitt(c: AxiosInstance): Promise<{ id: number, sch
   return (st.abschnitte as { id: number, schuljahr: number, abschnitt: number }[]).find(a => a.id === st.idSchuljahresabschnitt)!
 }
 
+/**
+ * Die KOOP-DB muss auf demselben Schuljahresabschnitt stehen wie alle Quell-DBs, sonst passen Jahrgänge, Klassen und
+ * Lernabschnitte nicht zusammen. Meldet Abweichungen als Fehler im Protokoll und liefert false.
+ */
+export async function pruefeAbschnitte(koop: AxiosInstance, quellen: QuellKontext[], protokoll: Protokoll): Promise<boolean> {
+  const abschnitt = await ladeAbschnitt(koop)
+  let ok = true
+  for (const q of quellen) {
+    const qa = await ladeAbschnitt(q.client)
+    if (qa.schuljahr === abschnitt.schuljahr && qa.abschnitt === abschnitt.abschnitt) continue
+    ok = false
+    protokoll.add('fehler', 'Abschnitt', `Die KOOP-DB steht auf ${abschnitt.schuljahr}/${abschnitt.abschnitt}, Schule ${q.info.nr} (${q.info.schema}) auf ${qa.schuljahr}/${qa.abschnitt}. `
+      + 'Übernommen werden kann erst, wenn beide auf demselben Schuljahresabschnitt stehen.')
+  }
+  return ok
+}
+
 /** Quellschule mit derselben Schulnummer wie die KOOP-DB (gleiche Schulform), sonst die erste */
 export function referenzQuelle(quellen: QuellKontext[], koopSchulNr: number | null): QuellKontext {
   return quellen.find(q => q.info.schulNr === koopSchulNr) ?? quellen[0]
@@ -135,11 +152,7 @@ export async function bereiteKoopVor(koop: AxiosInstance, quellen: QuellKontext[
   const protokoll = new Protokoll()
   const ref = referenzQuelle(quellen, koopSchulNr)
   const abschnitt = await ladeAbschnitt(koop)
-  const refAbschnitt = await ladeAbschnitt(ref.client)
-  if (refAbschnitt.schuljahr !== abschnitt.schuljahr || refAbschnitt.abschnitt !== abschnitt.abschnitt) {
-    protokoll.add('fehler', 'Abschnitt', `Die KOOP-DB steht auf ${abschnitt.schuljahr}/${abschnitt.abschnitt}, die Quell-DBs auf ${refAbschnitt.schuljahr}/${refAbschnitt.abschnitt}.`)
-    return protokoll
-  }
+  if (!await pruefeAbschnitte(koop, quellen, protokoll)) return protokoll
 
   fortschritt('Jahrgänge')
   const stand = await ladeQuellStand(ref.client, ref.info.nr, ref.info.schulNr, ref.info.schulname, ref.info.koopSchulNr)
@@ -232,6 +245,7 @@ export async function bereiteKoopVor(koop: AxiosInstance, quellen: QuellKontext[
 /** Übernimmt die aktiven Lehrkräfte aller Quell-DBs (ADR 002, A10), mit Auswahl nur diese */
 export async function uebernehmeLehrkraefte(koop: AxiosInstance, quellen: QuellKontext[], fortschritt: Fortschritt, auswahl?: Auswahl): Promise<Protokoll> {
   const protokoll = new Protokoll()
+  if (!await pruefeAbschnitte(koop, quellen, protokoll)) return protokoll
   const abschnitt = await ladeAbschnitt(koop)
   for (const q of quellen) {
     const kataloge = await ladeKatalogZuordnungen(koop, q.client)
@@ -351,6 +365,7 @@ async function ladeVorhandeneSchueler(koop: AxiosInstance, abschnittId: number):
  */
 export async function uebernehmeSchueler(koop: AxiosInstance, quellen: QuellKontext[], fortschritt: Fortschritt, auswahl?: Auswahl): Promise<Protokoll> {
   const protokoll = new Protokoll()
+  if (!await pruefeAbschnitte(koop, quellen, protokoll)) return protokoll
   const abschnitt = await ladeAbschnitt(koop)
   const koopJahrgaenge = new Map((await get<Roh[]>(koop, '/jahrgaenge/')).map(j => [j.kuerzel as string, j.id as number]))
   const koopKlassen = new Map((await get<Roh[]>(koop, `/klassen/minimal/abschnitt/${abschnitt.id}`)).map(k => [k.kuerzel as string, k.id as number]))
@@ -403,11 +418,17 @@ export async function uebernehmeSchueler(koop: AxiosInstance, quellen: QuellKont
             return
           }
           const klasse = koopKlasse(s.jahrgang, quellKlassen.get(s.idKlasse) ?? '')
+          // Ohne Jahrgang oder Klasse in der KOOP-DB würde der Schüler unvollständig angelegt
+          if (!koopJahrgaenge.has(s.jahrgang) || !koopKlassen.has(klasse)) {
+            protokoll.add('fehler', 'Schüler', `${name}: ${koopJahrgaenge.has(s.jahrgang) ? `Klasse „${klasse}“` : `Jahrgang ${s.jahrgang}`} fehlt in der KOOP-DB. `
+              + 'Bitte zuerst „KOOP-DB vorbereiten“ ausführen.')
+            return
+          }
           const neu = (await koop.post('/schueler/create', {
             nachname: stammdaten.nachname, vorname: stammdaten.vorname, alleVornamen: stammdaten.alleVornamen,
             geschlecht: stammdaten.geschlecht, geburtsdatum: stammdaten.geburtsdatum, status: stammdaten.status,
             anmeldedatum: stammdaten.anmeldedatum, aufnahmedatum: stammdaten.aufnahmedatum,
-            idSchuljahresabschnitt: abschnitt.id, idJahrgang: koopJahrgaenge.get(s.jahrgang), idKlasse: koopKlassen.get(klasse) ?? null,
+            idSchuljahresabschnitt: abschnitt.id, idJahrgang: koopJahrgaenge.get(s.jahrgang), idKlasse: koopKlassen.get(klasse),
           })).data
           const id = neu.id as number
           await koop.patch(`/schueler/${id}/stammdaten`, patch)

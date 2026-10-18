@@ -27,3 +27,4 @@ SVWS-KOOP ändert den SVWS-Server nicht selbst. Wo die API nicht reicht, melden 
 | [03](03-kurs-schulnummer-500.md) | `schulnummer` am Kurs lässt sich nicht setzen (500) | Fehler |
 | [04](04-init-jahrgaenge-ohne-schulgliederung.md) | Nach `init` haben die Jahrgänge keine Schulgliederung, Abiturjahrgang nicht anlegbar | Fehler |
 | [05](05-idext-in-schuelerstammdaten.md) | `IDext` der Schüler über die API lesen und schreiben | Erweiterung |
+| [06](06-init-schuljahresabschnitt.md) | Schuljahresabschnitt beim Initialisieren wählen oder per API anlegen | Erweiterung |

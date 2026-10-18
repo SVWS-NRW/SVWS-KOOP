@@ -57,6 +57,17 @@ export function initSchulNr(koop: KoopAngaben): number | null {
   return istTestdatenSchulNr(koop.schulNr) ? TESTDATEN_ERSATZ_SCHULNR : koop.schulNr
 }
 
+/**
+ * Schuljahresabschnitt, mit dem der SVWS-Server eine neue Datenbank initialisiert (DataSchuleStammdaten.init): nach dem
+ * heutigen Datum, ab August das neue Schuljahr, März bis Juli das 2. Halbjahr. Einen anderen Abschnitt kann man nicht wählen
+ * und über die API auch nicht nachträglich anlegen.
+ */
+export function initAbschnitt(datum: Date): { schuljahr: number, abschnitt: number } {
+  const monat = datum.getMonth() + 1
+  const jahr = datum.getFullYear()
+  return { schuljahr: monat > 7 ? jahr : jahr - 1, abschnitt: monat > 2 && monat < 8 ? 2 : 1 }
+}
+
 /** Feldlänge von Bezeichnung1–3 in den Schulstammdaten */
 export const MAX_BEZEICHNUNG = 50
 

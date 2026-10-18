@@ -1,5 +1,5 @@
 import type { AxiosInstance } from 'axios'
-import { KOOP, quellSchluessel, erzeugeSchemaClient, erzeugeServerClient } from '@/services/apiClient'
+import { KOOP, quellSchluessel, erzeugeSchemaClient, erzeugeServerClient, getClient } from '@/services/apiClient'
 import {
   ladeSchemaliste, existiertSchema, existiertDbBenutzer, passtDbKennwort, erstelleSchema, initialisiereSchema, importiereSqlite,
 } from '@/services/schemaService'
@@ -8,7 +8,7 @@ import {
   aendereSchulkatalogEintrag, ladeBenutzerliste, erstelleBenutzer, gibAdminrechte, setzeKennwort, setzeKonfiguration,
 } from '@/services/svwsService'
 import { KONFIG_QUELLEN, type QuellInfo } from '@/models/Quelle'
-import { bildeKoopBezeichnung, initSchulNr, koopSchulnummern, type EinrichtungsAngaben, type QuellAngaben, type ServerAngaben } from '@/koop/einrichtung'
+import { bildeKoopBezeichnung, initAbschnitt, initSchulNr, koopSchulnummern, type EinrichtungsAngaben, type QuellAngaben, type ServerAngaben } from '@/koop/einrichtung'
 
 // Ablauf des Assistenten „KOOP-DB einrichten“ (ADR 003, Abschnitt 1)
 
@@ -51,6 +51,29 @@ export async function pruefeAmServer(angaben: EinrichtungsAngaben): Promise<stri
     fehler.push(`Den Datenbank-Benutzer „${angaben.koop.dbUser}“ gibt es bereits mit einem anderen Kennwort.`)
   }
   return fehler
+}
+
+/**
+ * Warnt, wenn die Quell-DBs auf einem anderen Schuljahresabschnitt stehen als die neue KOOP-DB. Der SVWS-Server legt sie
+ * nach dem heutigen Datum an (initAbschnitt). Die Übernahme ist dann erst möglich, wenn die Abschnitte übereinstimmen.
+ */
+export async function pruefeAbschnitte(angaben: EinrichtungsAngaben, heute = new Date()): Promise<string[]> {
+  const koop = initAbschnitt(heute)
+  const warnungen: string[] = []
+  for (const q of angaben.quellen) {
+    const st = await ladeSchulstammdatenRoh(getClient(quellSchluessel(q.nr)))
+    const a = (st.abschnitte as { id: number, schuljahr: number, abschnitt: number }[]).find(x => x.id === st.idSchuljahresabschnitt)
+    if (a && (a.schuljahr !== koop.schuljahr || a.abschnitt !== koop.abschnitt)) {
+      warnungen.push(`Schule ${q.nr} (${q.schema}) steht auf ${a.schuljahr}/${a.abschnitt}, die KOOP-DB wird nach dem heutigen Datum mit `
+        + `${koop.schuljahr}/${koop.abschnitt} angelegt. Der SVWS-Server bietet keinen anderen Abschnitt an. Lehrkräfte und Schüler lassen sich `
+        + 'erst übernehmen, wenn beide Datenbanken auf demselben Schuljahresabschnitt stehen.')
+    }
+  }
+  return warnungen
+}
+
+async function ladeSchulstammdatenRoh(client: AxiosInstance): Promise<Record<string, any>> {
+  return (await client.get('/schule/stammdaten')).data
 }
 
 // ── Generierung ──────────────────────────────────────────────────────────────

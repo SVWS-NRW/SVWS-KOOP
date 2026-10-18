@@ -130,6 +130,7 @@ Die Originale `gymnasium`, `gymnasium2`, `gymnasium3` und `gesamtschule` haben a
 
 ## Bekannte Einschränkungen
 
+- Eine neue KOOP-DB steht immer auf dem Schuljahresabschnitt des heutigen Datums (SVWS-Server, Issue 06). Stehen die Quell-DBs auf einem anderen, ist keine Übernahme möglich. Der Assistent warnt davor, die Übernahme bricht mit einer Meldung ab. Für Tests kann ein Datenbank-Administrator den Abschnitt per SQL anlegen.
 - Bis zur Reparatur im SVWS-Server setzt die Rückspielung die Schulnummer der Partnerschule nur in den Leistungsdaten, nicht am Kurs.
 - Bis `IDext` über die API verfügbar ist, steht die ID aus der Stammschule in der Schülerausweisnummer der KOOP-DB.
 - 8 mittlere Meldungen von `npm audit` in electron-builder (`sprintf-js`), nur zur Build-Zeit, ohne verfügbare Korrektur.

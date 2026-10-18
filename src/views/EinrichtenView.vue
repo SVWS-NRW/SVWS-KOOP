@@ -189,6 +189,9 @@
           <ul class="fehlerliste"><li v-for="f in pruefFehler" :key="f">{{ f }}</li></ul>
         </Message>
         <Message v-else-if="generiert === 'nein'" severity="success" :closable="false">Alle Angaben sind vollständig und gültig.</Message>
+        <Message v-if="!pruefLaeuft && pruefWarnungen.length > 0" severity="warn" :closable="false">
+          <ul class="fehlerliste"><li v-for="w in pruefWarnungen" :key="w">{{ w }}</li></ul>
+        </Message>
 
         <ul v-if="schritte.length > 0" class="schritte">
           <li v-for="s in schritte" :key="s.id" :class="s.status">
@@ -243,7 +246,7 @@ import { useErrorService, toAppError } from '@/services/errorService'
 import { entferneAlleClients } from '@/services/apiClient'
 import { loescheSchema } from '@/services/schemaService'
 import {
-  ladeVorhandeneSchemata, pruefeQuellVerbindung, spieleQuellDateiEin, pruefeAmServer,
+  ladeVorhandeneSchemata, pruefeQuellVerbindung, spieleQuellDateiEin, pruefeAmServer, pruefeAbschnitte,
   erzeugeSchritte, generiereKoopDb, erzeugeRootClient, quellInfos, type Schritt, type SchrittStatus,
 } from '@/services/einrichtungService'
 import {
@@ -397,6 +400,7 @@ function weiter() {
 
 const pruefLaeuft = ref(false)
 const pruefFehler = ref<string[]>([])
+const pruefWarnungen = ref<string[]>([])
 const generiert = ref<'nein' | 'laeuft' | 'fertig' | 'fehler'>('nein')
 const generierFehler = ref('')
 const schritte = ref<Schritt[]>([])
@@ -417,6 +421,7 @@ async function pruefeAlles() {
     schemata.value = await ladeVorhandeneSchemata(angaben.server)
     pruefFehler.value = pruefeAngaben(angaben, schemata.value)
     if (pruefFehler.value.length === 0) pruefFehler.value = await pruefeAmServer(angaben)
+    pruefWarnungen.value = pruefFehler.value.length === 0 ? await pruefeAbschnitte(angaben) : []
   } catch (e) {
     pruefFehler.value = [toAppError(e, 'einrichten:pruefen').messageUser]
   } finally {
