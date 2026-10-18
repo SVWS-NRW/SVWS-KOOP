@@ -39,6 +39,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/uebersicht',
+      name: 'uebersicht',
+      component: () => import('@/views/UebersichtView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/connect',
     },

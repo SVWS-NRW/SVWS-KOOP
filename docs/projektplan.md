@@ -57,6 +57,14 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 - [ ] Rückkehrer: Schüler mit Löschvermerk, der wieder in der Quell-DB auftaucht, wird heute neu angelegt statt reaktiviert
 - [ ] Backup einer Schule direkt in der Ansicht einspielen (heute über den Admin-Client)
 
+### 3b. Übersicht KOOP-DB – umgesetzt
+
+- [x] Schulen: Schüler je Stufe, Schüler ohne Fachwahlen, aktive und entfernte Lehrkräfte, Kurse und Wochenstunden im laufenden Halbjahr, Prüfung des Schulkatalogs
+- [x] Stufen: Verteilung der Schüler auf die Schulen, Schüler ohne Fachwahlen, Kurse (auch ohne Lehrkraft), Blockungen aller Halbjahre mit Link in den SVWS-Client
+- [x] Lehrkräfte: Liste mit Suche, Filter nach Schule und Status, Kurse, Wochenstunden und Stufen
+- [ ] Link in den SVWS-Client im Browser prüfen (Route aus dem Quellcode des Clients abgeleitet)
+- [ ] Kooperationskurse: Schüler, die Kurse an einer Partnerschule besuchen
+
 ### 4. Rückspielung (Phase 4)
 
 - [ ] Prüfungen: zu altes Backup, in der Stammschule geänderte Fachwahlen
@@ -67,7 +75,7 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 
 ### 5. Abrunden
 
-- [ ] Übersicht der KOOP-DB, Protokolle
+- [ ] Protokolle
 - [ ] App-Icon
 - [ ] Electron-Build und erstes Release 0.1.0
 - [ ] Aufnahme in [SVWS-Tools](https://github.com/SVWS-NRW/SVWS-Tools)
