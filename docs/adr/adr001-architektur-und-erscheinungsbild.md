@@ -101,6 +101,7 @@ Verbindlich ist das Design-System aus SVWS-Prognos ADR 0017 bzw. SVWS-Conference
 - **Impressum** über `public/impressum.js` (Vorlage `impressum.example.js`, Variable `window.__IMPRESSUM_MARKDOWN__`), damit Schule oder IT-Dienstleister es ohne Neubau anpassen können.
 - **Hilfe** verlinkt auf `https://doku.svws-nrw.de/svws_module/svws_koop/`.
 - **WCAG AA** für alle Farbkombinationen.
+- **Skalierung** wie in SVWS-Import und SVWS-Prognos: Im Browser gilt die Standardschriftgröße (100 %), keine eigene Verkleinerung über `font-size` auf `<html>`. Die Electron-App startet maximiert (`win.maximize()`, 1400×900 beim Verlassen der Maximierung), Zoom über Strg + / Strg − / Strg 0.
 
 ### 5. Routing
 

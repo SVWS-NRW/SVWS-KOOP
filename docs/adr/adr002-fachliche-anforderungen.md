@@ -250,11 +250,12 @@ Weil alle Schemata, mit denen SVWS-KOOP gleichzeitig arbeitet, auf **einem** SVW
 
 ## Oberfläche (erster Entwurf)
 
+Der Assistent **KOOP-DB einrichten** wird über die Anmeldeseite gestartet, nicht über eine Kachel: Er braucht den Datenbank-Root-Zugang, und die KOOP-DB, an der man sich für das Dashboard anmeldet, gibt es zu diesem Zeitpunkt noch nicht. Nach dem Generieren meldet der Assistent an der neuen KOOP-DB an und öffnet das Dashboard.
+
 Dashboard mit Kacheln wie in den anderen SVWS-Tools (ADR 001, Abschnitt 4):
 
 | Kachel | Zweck | Phase |
 |---|---|---|
-| **KOOP-DB einrichten** | Assistent: zuerst alle Angaben abfragen und prüfen (Quell-DBs mit Zugangsdaten und Nummer, Name und Zugangsdaten der KOOP-DB, neue Benutzer je Schule, siehe ADR 003), danach KOOP-DB anlegen und kennzeichnen | 1 |
 | **Konsistenz prüfen** | Abweichungen bei Fächern, Oberstufeneinstellungen, Jahrgängen und Klassen je Schule anzeigen | 1 |
 | **Lehrkräfte übernehmen** | Aktive Lehrkräfte aller Schulen, Vorschau der neuen Kürzel (`<Kürzel>-<Nr>`), Übernahme, Protokoll | 1 |
 | **Schüler übernehmen** | Jahrgänge wählen, Vorschau, Übernahme, Protokoll | 1 |

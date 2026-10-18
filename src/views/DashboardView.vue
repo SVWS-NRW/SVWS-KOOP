@@ -59,9 +59,8 @@ interface Kachel {
   route?: string
 }
 
-// Kacheln nach ADR 002, Abschnitt „Oberfläche“
+// Kacheln nach ADR 002, Abschnitt „Oberfläche“. „KOOP-DB einrichten“ ist keine Kachel, der Assistent startet auf der Anmeldeseite.
 const kacheln: Kachel[] = [
-  { titel: 'KOOP-DB einrichten', untertitel: 'Quell-DBs, Zugangsdaten und Benutzer angeben, KOOP-DB anlegen', icon: 'pi pi-database', phase: '1' },
   { titel: 'Konsistenz prüfen', untertitel: 'Fächer, Oberstufe, Jahrgänge, Klassen und Kataloge vergleichen', icon: 'pi pi-check-square', phase: '1', route: 'konsistenz' },
   { titel: 'Lehrkräfte übernehmen', untertitel: 'Aktive Lehrkräfte mit Kürzel <Kürzel>-<Nr>', icon: 'pi pi-id-card', phase: '1', route: 'uebernahme' },
   { titel: 'Schüler übernehmen', untertitel: 'Stammdaten, Erzieher, Sprachenfolge und Fachwahlen', icon: 'pi pi-users', phase: '1', route: 'uebernahme' },
@@ -115,7 +114,7 @@ function handleLogout() {
 .tile-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 @media (max-width: 900px) {
@@ -129,9 +128,10 @@ function handleLogout() {
 .tile {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem 1rem;
-  border-radius: 0.75rem;
+  gap: 1.5rem;
+  min-height: 9rem;
+  padding: 2rem 1.75rem;
+  border-radius: 1rem;
   border: 1px solid var(--p-content-border-color);
   background: var(--p-content-background);
 }
@@ -154,44 +154,44 @@ function handleLogout() {
 
 .tile-icon {
   flex-shrink: 0;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.5rem;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.75rem;
   background: var(--p-primary-50, #ecfdf5);
   color: var(--p-primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1.9rem;
 }
 
 .tile-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.4rem;
   min-width: 0;
 }
 
 .tile-title {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.25rem;
 }
 
 .tile-sub,
 .tile-phase {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   color: var(--p-text-muted-color);
 }
 
 .tile-phase {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
 }
 
 .tile-arrow {
   flex-shrink: 0;
   color: var(--p-text-muted-color);
-  font-size: 0.85rem;
+  font-size: 1.1rem;
 }
 
 .dashboard-footer {
