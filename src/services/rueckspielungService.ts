@@ -12,6 +12,7 @@ import {
   lehrkraefteInSchule, mischeFachwahl, pruefeStand, type Kursort, type LetzteRueckspielung, type Vermerk,
 } from '@/koop/rueckspielung'
 import { HALBJAHR_TITEL } from '@/koop/uebersicht'
+import { istTestdatenSchulNr } from '@/koop/einrichtung'
 
 // Rückspielung aus der KOOP-DB in die Datenbank einer Stammschule (ADR 002, A16–A20; ADR 004).
 // ladeVorschau liest nur, spieleZurueck schreibt nach Bestätigung.
@@ -157,6 +158,10 @@ export interface JahrgangsPlan {
 
 export interface PlatzhalterPlan {
   nr: number
+  /**
+   * Schulnummer der Partnerschule, unter der sie im Schulkatalog steht und in koopSchule eingetragen wird: die Schulnummer
+   * in der KOOP-DB (koopSchulNr), bei Testdaten eine Ersatznummer statt 123456 (ADR 003, „Testdaten“)
+   */
   schulNr: number
   kuerzel: string | null
   name: string
@@ -207,6 +212,11 @@ export async function ladeVorschau(
   if (stand === 'ohneStand') global.hinweise.push(mld('Die KOOP-DB wurde nicht über „Verteilen“ erstellt. Ob das Backup aktuell ist, kann nicht geprüft werden.'))
   if (stand === 'veraltet') global.warnungen.push(mld(`Das eingespielte KOOP-Backup (Stand ${new Date(koopStand!).toLocaleString('de-DE')}) ist nicht neuer als das der letzten Rückspielung (Stand ${new Date(letzte!.stand!).toLocaleString('de-DE')}).`))
 
+  if (quellen.some(q => istTestdatenSchulNr(q.schulNr))) {
+    global.hinweise.push(mld('Testdaten: Die Schulen werden über ihre Schulnummern in der KOOP-DB erkannt. Im Schulkatalog der Schule müssen die '
+      + 'Partnerschulen unter diesen Nummern mit Kürzel stehen.', quellen.filter(q => q.nr !== quelle.nr).map(q => `Schule ${q.nr} (${q.schema}): ${q.koopSchulNr}`)))
+  }
+
   const koopAbschnitt = (koopSt.abschnitte as Roh[]).find(a => a.id === koopSt.idSchuljahresabschnitt)!
   const abschnittId = (abschnitte: Roh[], schuljahr: number, abschnitt: number): number | null =>
     abschnitte.find(a => a.schuljahr === schuljahr && a.abschnitt === abschnitt)?.id ?? null
@@ -226,15 +236,15 @@ export async function ladeVorschau(
 
   // Platzhalter je Partnerschule: Kürzel aus dem Schulkatalog der Schule (ADR 002, „Lehrkraft der Partnerschule“)
   const platzhalter: PlatzhalterPlan[] = quellen.filter(q => q.nr !== quelle.nr).map(q => {
-    const eintrag = katalog.find(e => e.schulnummerStatistik === String(q.schulNr))
+    const eintrag = katalog.find(e => e.schulnummerStatistik === String(q.koopSchulNr))
     const kuerzel = (eintrag?.kuerzel as string | null) ?? null
     const vorhanden = kuerzel ? schuleLehrerListe.find(l => l.kuerzel === kuerzel) : undefined
     let problem: string | null = null
-    if (!eintrag) problem = `Die Partnerschule ${q.schulNr} fehlt im Schulkatalog der Schule.`
-    else if (!kuerzel) problem = `Die Partnerschule ${q.schulNr} hat im Schulkatalog der Schule kein Kürzel.`
-    else if (vorhanden && vorhanden.istRelevantFuerStatistik) problem = `Das Kürzel „${kuerzel}“ der Partnerschule ${q.schulNr} gehört in der Schule zu einer echten Lehrkraft.`
+    if (!eintrag) problem = `Die Partnerschule ${q.koopSchulNr} fehlt im Schulkatalog der Schule.`
+    else if (!kuerzel) problem = `Die Partnerschule ${q.koopSchulNr} hat im Schulkatalog der Schule kein Kürzel.`
+    else if (vorhanden && vorhanden.istRelevantFuerStatistik) problem = `Das Kürzel „${kuerzel}“ der Partnerschule ${q.koopSchulNr} gehört in der Schule zu einer echten Lehrkraft.`
     return {
-      nr: q.nr, schulNr: q.schulNr, kuerzel, name: (eintrag?.name as string | undefined) ?? q.schulname,
+      nr: q.nr, schulNr: q.koopSchulNr, kuerzel, name: (eintrag?.name as string | undefined) ?? q.schulname,
       id: vorhanden && !vorhanden.istRelevantFuerStatistik ? vorhanden.id as number : null, problem,
     }
   })

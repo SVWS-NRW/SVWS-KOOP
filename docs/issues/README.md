@@ -6,7 +6,7 @@ Diese Texte sind als Vorlagen für Issues im Projekt [SVWS-NRW/SVWS-Server](http
 
 **SVWS-KOOP** ist ein neues SVWS-Tool in der Familie von SVWS-Import, SVWS-Prognos und SVWS-Konferenz (Vue-SPA, kein eigenes Backend, greift nur über die REST-API des SVWS-Servers zu). Es unterstützt Schulen mit gymnasialer Oberstufe, die ihre Kurse **in einer Kooperation gemeinsam blocken**:
 
-1. Die Datenbanken von bis zu drei Kooperationsschulen werden als Schemata auf einem SVWS-Server eingespielt (`/api/schema/root/import/sqlite`).
+1. Die Datenbanken von bis zu fünf Kooperationsschulen werden als Schemata auf einem SVWS-Server eingespielt (`/api/schema/root/import/sqlite`).
 2. SVWS-KOOP legt ein neues Schema an, die **KOOP-DB** (`/api/schema/root/create` + `/api/schema/create/{schema}/init/{schulnummer}`), und überträgt Schüler, Lehrkräfte, Fächer und Oberstufeneinstellungen aus den Quell-DBs per API.
 3. In der KOOP-DB wird mit dem SVWS-Client geblockt.
 4. Kurse und Kurszuordnungen werden per API in die Datenbanken der einzelnen Schulen zurückgespielt.

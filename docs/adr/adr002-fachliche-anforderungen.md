@@ -20,7 +20,7 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
 | Begriff | Bedeutung |
 |---|---|
 | **Stammschule** | Die Schule, an der ein Schüler angemeldet ist. Ihre SVWS-Datenbank ist und bleibt die führende Datenbank für diesen Schüler. |
-| **Kooperationsschulen** | Alle an der Kooperation beteiligten Schulen (zunächst bis zu drei). |
+| **Kooperationsschulen** | Alle an der Kooperation beteiligten Schulen (bis zu fünf). |
 | **KOOP-DB** | Ein eigenes SVWS-Schema, in dem die Schüler und Lehrkräfte aller Kooperationsschulen zusammengeführt und gemeinsam geblockt werden. |
 | **KOOP-Server** | Ein SVWS-Server nach Wahl der Kooperation, auf dem die Daten zusammengeführt und geblockt werden. Es gibt keine Leitschule, alle Kooperationsschulen sind gleichberechtigt. |
 | **Übernahme** | Übertragung von Schülern, Fachwahlen und Lehrkräften aus den Stammschulen in die KOOP-DB. |
@@ -30,7 +30,7 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
 
 ### Allgemein
 
-- **A1** SVWS-KOOP unterstützt eine Kooperation aus bis zu **drei** Schulen. Die Datenstrukturen sollen eine spätere Erweiterung auf mehr Schulen nicht verhindern. Gedacht ist SVWS-KOOP für Kooperationen ab drei Schulen. Zwei Schulen nutzen es, wenn sie die gesamte Stufe gemeinsam blocken. Blocken zwei Schulen jede für sich und bieten nur einzelne Kurse gemeinsam an, reichen die KOOP-Funktionen der Oberstufe im SVWS-Client (ADR 004, F5).
+- **A1** SVWS-KOOP unterstützt eine Kooperation aus bis zu **fünf** Schulen (erweitert 2026-10-18, zuvor drei; es gibt einen Verbund aus vier Schulen). Die Nummern der Quellschulen (1–5) bleiben einstellig, damit das Suffix `-<Nr>` in das Kürzelfeld passt. Gedacht ist SVWS-KOOP für Kooperationen ab drei Schulen. Zwei Schulen nutzen es, wenn sie die gesamte Stufe gemeinsam blocken. Blocken zwei Schulen jede für sich und bieten nur einzelne Kurse gemeinsam an, reichen die KOOP-Funktionen der Oberstufe im SVWS-Client (ADR 004, F5).
 - **A2** Betroffen sind die Schüler der Jahrgänge **10, EF, Q1 und Q2**. Für den Jahrgang 10 wird die EF.1 des kommenden Schuljahres geplant.
 - **A3** Geblockt wird wie an einer einzelnen Schule: **eine Blockung pro Abiturjahrgang und Halbjahr**. Die Blockung selbst findet in der KOOP-DB mit den vorhandenen Funktionen des SVWS-Servers bzw. SVWS-Clients statt (Blockung anlegen, rechnen, Ergebnis aktivieren). SVWS-KOOP baut die Blockung nicht nach.
 - **A4** SVWS-KOOP übernimmt alle Schritte **vor** und **nach** der Blockung: KOOP-DB einrichten, Daten prüfen, Daten übernehmen, Daten zurückspielen.

@@ -2,7 +2,7 @@
 
 Werkzeug für Schulen mit gymnasialer Oberstufe in NRW, die ihre Oberstufenkurse in einer **Kooperation gemeinsam blocken**.
 
-Arbeiten bis zu drei Schulen zusammen und blocken die gesamte Stufe gemeinsam, können ihre Schülerinnen und Schüler dieselben Kurse besuchen. So lassen sich mehr Kurse einrichten und ein breiteres Fächerangebot machen. SVWS-KOOP führt dafür die Daten der Kooperationsschulen in einer gemeinsamen Datenbank zusammen. Dort wird mit den vorhandenen Werkzeugen des SVWS-Servers geblockt, danach bringt SVWS-KOOP die Ergebnisse in die Datenbank jeder Schule zurück.
+Arbeiten bis zu fünf Schulen zusammen und blocken die gesamte Stufe gemeinsam, können ihre Schülerinnen und Schüler dieselben Kurse besuchen. So lassen sich mehr Kurse einrichten und ein breiteres Fächerangebot machen. SVWS-KOOP führt dafür die Daten der Kooperationsschulen in einer gemeinsamen Datenbank zusammen. Dort wird mit den vorhandenen Werkzeugen des SVWS-Servers geblockt, danach bringt SVWS-KOOP die Ergebnisse in die Datenbank jeder Schule zurück.
 
 SVWS-KOOP gehört zur Familie der [SVWS-Tools](https://github.com/SVWS-NRW/SVWS-Tools) und sieht aus und funktioniert wie SVWS-Import, SVWS-Prognos und SVWS-Konferenz.
 

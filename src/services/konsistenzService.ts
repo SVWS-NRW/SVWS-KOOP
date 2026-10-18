@@ -27,7 +27,8 @@ function gostFachKuerzel(f: Record<string, unknown>): string {
   return (f.kuerzelAnzeige as string | null) || (f.kuerzel as string)
 }
 
-export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr: number, schulname: string): Promise<QuellStand> {
+/** @param koopSchulNr  Schulnummer in der KOOP-DB, weicht nur bei Testdaten von schulNr ab */
+export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr: number, schulname: string, koopSchulNr = schulNr): Promise<QuellStand> {
   const [stammdaten, jahrgaengeRoh, faecherRoh, abiturjahrgaenge, schulkatalog, lehrer] = await Promise.all([
     client.get('/schule/stammdaten').then(r => r.data),
     client.get('/jahrgaenge/').then(r => r.data as Record<string, unknown>[]),
@@ -81,7 +82,7 @@ export async function ladeQuellStand(client: AxiosInstance, nr: number, schulNr:
 
   return {
     daten: {
-      nr, schulNr, schulname,
+      nr, schulNr, koopSchulNr, schulname,
       abschnitt: { schuljahr: abschnitt.schuljahr, abschnitt: abschnitt.abschnitt },
       jahrgaenge,
       klassen,

@@ -1,7 +1,8 @@
 // Angaben und Prüfregeln für den Assistenten „KOOP-DB einrichten“ (ADR 003, Abschnitt 1)
 
 export const MIN_QUELLEN = 2
-export const MAX_QUELLEN = 3
+/** Bis zu fünf Kooperationsschulen (ADR 002, A1) */
+export const MAX_QUELLEN = 5
 
 /** Strengere Regel als der SVWS-Server, damit Schemanamen auf allen Datenbanksystemen funktionieren */
 const SCHEMA_NAME = /^[a-z][a-z0-9_]{0,63}$/

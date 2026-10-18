@@ -61,7 +61,7 @@ Geprüft wurde in zwei Schritten:
 |---|---|---|
 | Server | Adresse des KOOP-Servers, optional Adresse für privilegierte Zugriffe | alle Aufrufe, Root-Endpunkte (Abschnitt 2) |
 | Datenbank-Root | Benutzername und Kennwort | Basic Auth für `root/create` und `root/exists` |
-| Quell-DBs (je Schule, bis zu drei) | **Name des Schemas** auf dem KOOP-Server | Lesen der Schuldaten |
+| Quell-DBs (je Schule, bis zu fünf) | **Name des Schemas** auf dem KOOP-Server | Lesen der Schuldaten |
 | | **SVWS-Benutzer und Kennwort** für dieses Schema | Basic Auth beim Lesen |
 | | Nummer der Schule (1, 2, 3) | Schulkatalog, Lehrerkürzel `-<Nr>` |
 | KOOP-DB | **Name des Schemas** | Pfad von `root/create` und `init` |
@@ -80,6 +80,8 @@ Prüfungen vor der Generierung:
 Erst danach legt SVWS-KOOP die KOOP-DB an, initialisiert sie und arbeitet dann **mit dem SVWS-Benutzer `Admin`** weiter. Kennwörter werden nur für die Dauer der Sitzung im Arbeitsspeicher gehalten (ADR 001).
 
 **Testdaten:** Das SVWS-Anonymisierungstool vergibt allen Schulen die Schulnummer 123456. Nur bei dieser Nummer akzeptiert SVWS-KOOP, dass mehrere Quell-DBs dieselbe Schulnummer haben, und zeigt dazu einen Hinweis. Weil 123456 nicht im Schulkatalog des Servers steht und `init` damit scheitern würde, wird die KOOP-DB in diesem Fall mit der Schulnummer eines Gymnasiums angelegt (168890, Engelbert-Kaempfer-Gymnasium). Die Schulnummer im Schulkatalog ist eindeutig (Index `K_Schule_UC1`, getestet: zweiter Eintrag mit 123456 → 500). Deshalb behält in der KOOP-DB die erste Quellschule mit 123456 diese Nummer, weitere erhalten die nächsten freien Nummern (123457, …). Diese Nummer steht im Schulkatalog der KOOP-DB und in der Liste der Quell-DBs (`koopSchulNr`) und dient später als Merkmal Stammschule (`externeSchulNr`), damit die Rückspielung auch mit Testdaten eindeutig ist. Die Quell-DBs selbst bleiben unverändert.
+
+**Testdaten in den Schulkatalogen der Quell-DBs (2026-10-18):** Für die Platzhalter-Lehrkräfte und `koopSchule` erkennt eine Schule ihre Partnerschulen an deren Schulnummer im eigenen Schulkatalog. Mit 123456 bei allen Schulen geht das nicht. SVWS-KOOP verwendet deshalb überall die Schulnummer in der KOOP-DB (`koopSchulNr`) als Merkmal: in der Konsistenzprüfung des Schulkatalogs, bei der Suche der Platzhalter und als `koopSchule` in den Leistungsdaten. Bei echten Daten ist sie gleich der Schulnummer. Für Tests müssen die Partnerschulen in den Schulkatalogen der Quell-DBs unter diesen Nummern mit Kürzel eingetragen werden (z. B. Schule 2 als 123457). Der Server prüft `koopSchule` nur auf den Bereich 100000 bis 999999, nicht gegen den Schulkatalog (`DataSchuelerLeistungsdaten`). Welche Nummer eine Schule erhält, zeigen der Assistent („in der KOOP-DB: …“), die Übersicht der KOOP-DB und die Vorschau der Rückspielung.
 
 **Kennwörter:** Die KOOP-DB wird zunächst mit `Admin` und leerem Kennwort angelegt. Das Kennwort setzt danach SVWS-KOOP oder der Benutzer. Als `Admin` lassen sich Kennwörter über die API setzen (`POST /db/{schema}/benutzer/{id}/password`, Body: Kennwort als JSON-String). Getestet: Benutzer „Schule1“ angelegt (`POST …/benutzer/new` mit `anzeigename`, `benutzername`, `password`), Adminrechte vergeben (`POST …/benutzer/{id}/addAdmin`), Kennwort geändert, Anmeldung mit neuem Kennwort erfolgreich, mit altem abgelehnt.
 

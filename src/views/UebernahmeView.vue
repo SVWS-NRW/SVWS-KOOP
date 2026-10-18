@@ -105,7 +105,7 @@ function kontexte(): QuellKontext[] {
 async function pruefe() {
   prueft.value = true
   try {
-    const staende = await Promise.all(kontexte().map(k => ladeQuellStand(k.client, k.info.nr, k.info.schulNr, k.info.schulname)))
+    const staende = await Promise.all(kontexte().map(k => ladeQuellStand(k.client, k.info.nr, k.info.schulNr, k.info.schulname, k.info.koopSchulNr)))
     anzahlFehler.value = pruefeKonsistenz(staende.map(s => s.daten)).filter(a => a.schwere === 'fehler').length
   } catch (e) {
     reportError(e, 'uebernahme:pruefen')

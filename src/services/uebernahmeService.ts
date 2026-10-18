@@ -142,7 +142,7 @@ export async function bereiteKoopVor(koop: AxiosInstance, quellen: QuellKontext[
   }
 
   fortschritt('Jahrgänge')
-  const stand = await ladeQuellStand(ref.client, ref.info.nr, ref.info.schulNr, ref.info.schulname)
+  const stand = await ladeQuellStand(ref.client, ref.info.nr, ref.info.schulNr, ref.info.schulname, ref.info.koopSchulNr)
   await uebertrageJahrgaenge(stand, koop)
   protokoll.add('aktualisiert', 'Jahrgänge', `aus Schule ${ref.info.nr} übernommen, Schulgliederung ***`)
 

@@ -191,7 +191,7 @@ async function gleicheAb() {
   gleichtAb.value = true
   try {
     melde('Konsistenz prüfen')
-    const staende = await Promise.all(kontexte().map(k => ladeQuellStand(k.client, k.info.nr, k.info.schulNr, k.info.schulname)))
+    const staende = await Promise.all(kontexte().map(k => ladeQuellStand(k.client, k.info.nr, k.info.schulNr, k.info.schulname, k.info.koopSchulNr)))
     anzahlFehler.value = pruefeKonsistenz(staende.map(s => s.daten)).filter(a => a.schwere === 'fehler').length
     abgleich.value = await ladeAbgleich(getClient(KOOP), kontexte(), melde)
   } catch (e) {

@@ -95,6 +95,11 @@ export interface GostJahrgangDaten {
 export interface Quelldaten {
   nr: number
   schulNr: number
+  /**
+   * Schulnummer der Schule in der KOOP-DB. Gleich schulNr, bei Testdaten (123456) eine Ersatznummer. Unter dieser Nummer
+   * muss die Schule im Schulkatalog ihrer Partnerschulen stehen (ADR 003, „Testdaten“).
+   */
+  koopSchulNr: number
   schulname: string
   abschnitt: { schuljahr: number, abschnitt: number }
   jahrgaenge: JahrgangDaten[]
@@ -284,10 +289,10 @@ export function pruefeKonsistenz(quellen: Quelldaten[]): Abweichung[] {
   // Schulkatalog: jede Partnerschule muss mit Kürzel eingetragen sein (für die Platzhalter-Lehrkräfte)
   for (const q of quellen) {
     for (const partner of quellen.filter(p => p.nr !== q.nr)) {
-      const eintrag = q.schulkatalog.find(e => e.schulnummerStatistik === String(partner.schulNr))
+      const eintrag = q.schulkatalog.find(e => e.schulnummerStatistik === String(partner.koopSchulNr))
       if (eintrag && eintrag.kuerzel) continue
       ergebnis.push({
-        bereich: 'schulkatalog', objekt: `Partnerschule ${partner.schulNr} im Katalog von Schule ${q.nr}`,
+        bereich: 'schulkatalog', objekt: `Partnerschule ${partner.koopSchulNr} im Katalog von Schule ${q.nr}`,
         merkmal: eintrag ? 'Kürzel' : 'vorhanden', schwere: 'fehler', korrigierbar: false,
         werte: { [q.nr]: eintrag ? null : undefined },
       })

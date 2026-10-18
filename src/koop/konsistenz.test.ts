@@ -13,6 +13,7 @@ function schule(nr: number, teil: Partial<Quelldaten> = {}): Quelldaten {
   return {
     nr,
     schulNr: 100000 + nr,
+    koopSchulNr: 100000 + nr,
     schulname: `Schule ${nr}`,
     abschnitt: { schuljahr: 2026, abschnitt: 1 },
     jahrgaenge: ['10', 'EF', 'Q1', 'Q2'].map(k => ({ kuerzel: k, idJahrgang: 1, idSchulgliederung: 2, anzahlRestabschnitte: 6, folgejahrgang: null })),
@@ -131,5 +132,21 @@ describe('Fehler und Warnungen', () => {
     const a = pruefeKonsistenz([schule(1), s2])
     expect(a[0].schwere).toBe('fehler')
     expect(hatFehler(a)).toBe(true)
+  })
+})
+
+describe('Schulkatalog bei Testdaten', () => {
+  // Beide Schulen haben 123456 aus dem Anonymisierungstool, in der KOOP-DB 123456 und 123457 (koopSchulnummern)
+  const test = (nr: number, katalog: string[]) => schule(nr, {
+    schulNr: 123456, koopSchulNr: 123455 + nr, schulkatalog: katalog.map(n => ({ schulnummerStatistik: n, kuerzel: `K${n}` })),
+  })
+
+  it('erkennt Partnerschulen an der Schulnummer in der KOOP-DB', () => {
+    expect(pruefeKonsistenz([test(1, ['123457']), test(2, ['123456'])]).filter(a => a.bereich === 'schulkatalog')).toEqual([])
+  })
+
+  it('meldet einen Katalog, der nur die gemeinsame Testnummer enthält', () => {
+    const a = pruefeKonsistenz([test(1, ['123456']), test(2, ['123456'])]).filter(x => x.bereich === 'schulkatalog')
+    expect(a.map(x => x.objekt)).toEqual(['Partnerschule 123457 im Katalog von Schule 1'])
   })
 })

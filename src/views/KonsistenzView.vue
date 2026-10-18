@@ -148,7 +148,7 @@ async function pruefe() {
   prueft.value = true
   try {
     const clients = quellen.clients()
-    staende.value = await Promise.all(quellen.quellen.map(q => ladeQuellStand(clients[q.nr], q.nr, q.schulNr, q.schulname)))
+    staende.value = await Promise.all(quellen.quellen.map(q => ladeQuellStand(clients[q.nr], q.nr, q.schulNr, q.schulname, q.koopSchulNr)))
     abweichungen.value = pruefeKonsistenz(staende.value.map(s => s.daten))
     geprueftAm.value = new Date().toLocaleTimeString('de-DE')
   } catch (e) {

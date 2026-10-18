@@ -14,10 +14,12 @@
   --p-primary-color:       #059669;
   --p-primary-hover-color: #047857;
 
-  /* Kennfarben der Quellschulen 1–3 (fachliche Semantik) */
+  /* Kennfarben der Quellschulen 1–5 (fachliche Semantik) */
   --koop-schule-1: #2563eb;
   --koop-schule-2: #d97706;
   --koop-schule-3: #9333ea;
+  --koop-schule-4: #db2777;
+  --koop-schule-5: #0e7490;
 
   /* Prüfergebnisse */
   --koop-ok:      #16a34a;
@@ -42,6 +44,8 @@
   --koop-schule-1: #60a5fa;
   --koop-schule-2: #fbbf24;
   --koop-schule-3: #c084fc;
+  --koop-schule-4: #f472b6;
+  --koop-schule-5: #22d3ee;
 
   --koop-ok:      #4ade80;
   --koop-warnung: #fbbf24;

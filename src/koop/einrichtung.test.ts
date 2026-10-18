@@ -49,8 +49,11 @@ describe('pruefeQuellen', () => {
     expect(pruefeQuellen(quellen, vorhanden)).toEqual([])
   })
 
-  it('verlangt zwei bis drei Quellen', () => {
+  it('verlangt zwei bis fünf Quellen', () => {
     expect(pruefeQuellen([quellen[0]], vorhanden)).toHaveLength(1)
+    const sechs = [1, 2, 3, 4, 5, 6].map(nr => quelle(nr, `koop_${nr}`, 100000 + nr))
+    expect(pruefeQuellen(sechs, sechs.map(q => q.schema)).some(f => f.includes('2 bis 5'))).toBe(true)
+    expect(pruefeQuellen(sechs.slice(0, 5), sechs.map(q => q.schema))).toEqual([])
   })
 
   it('erkennt doppelte Schemata und Schulnummern', () => {
