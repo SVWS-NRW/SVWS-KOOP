@@ -193,3 +193,55 @@ export function fachwahlFuerKoop(wahl: Fachwahl, jahrgang: string, abschnitt: nu
   if (halbjahre.every(h => h === null) && wahl.abiturFach === null) return null
   return { wahl: { ...wahl, halbjahre }, entfernt }
 }
+
+// ── Prüfsumme der Fachwahlen (ADR 004, Abschnitt 1) ──────────────────────────
+
+/** Fachwahl eines Schülers in einem Fach, Fach über das Kürzel der Schule */
+export interface FachwahlEintrag {
+  kuerzel: string
+  halbjahre: (string | null)[]
+  abiturFach: number | null
+}
+
+/** Prüfsumme eines Schülers mit dem ersten berücksichtigten Halbjahr (0 = EF.1) */
+export interface Pruefsumme {
+  ab: number
+  p: string
+}
+
+/** Prüfsummen einer Quellschule: ID des Schülers in der Stammschule → Prüfsumme */
+export type Pruefsummen = Record<string, Pruefsumme>
+
+/** Schlüssel der Prüfsummen einer Quellschule in der Client-Konfiguration der KOOP-DB */
+export function konfigFachwahlen(koopSchulNr: number): string {
+  return `fachwahlen.${koopSchulNr}`
+}
+
+/** Erstes Halbjahr, dessen Fachwahlen übernommen werden (ab dem aktuellen, siehe vergangeneHalbjahre) */
+export function erstesHalbjahr(jahrgang: string, abschnitt: number): number {
+  return vergangeneHalbjahre(jahrgang, abschnitt).length
+}
+
+/** FNV-1a (32 Bit) als Hex-Text. Reicht, um Änderungen zu erkennen, und läuft ohne Web Crypto (auch über http). */
+function fnv1a(text: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
+/**
+ * Prüfsumme der Fachwahlen eines Schülers ab dem Halbjahr `ab`: je Fach die Kursarten ab diesem Halbjahr und das
+ * Abiturfach, nach Kürzel sortiert. Fächer ohne Wahl ab diesem Halbjahr zählen nicht. Übernahme und Rückspielung
+ * berechnen sie gleich aus den Fachwahlen der Stammschule, damit Änderungen dort erkannt werden (ADR 002, ADR 004).
+ */
+export function fachwahlPruefsumme(eintraege: FachwahlEintrag[], ab: number): string {
+  const teile = eintraege
+    .map(e => ({ kuerzel: e.kuerzel, halbjahre: e.halbjahre.map((h, i) => (i < ab ? null : h)), abiturFach: e.abiturFach }))
+    .filter(e => e.abiturFach !== null || e.halbjahre.some(h => h !== null))
+    .sort((a, b) => a.kuerzel.localeCompare(b.kuerzel))
+    .map(e => `${e.kuerzel}:${e.halbjahre.map(h => h ?? '-').join(',')}:${e.abiturFach ?? '-'}`)
+  return fnv1a(teile.join(';'))
+}

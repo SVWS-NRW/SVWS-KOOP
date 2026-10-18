@@ -30,7 +30,7 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
 
 ### Allgemein
 
-- **A1** SVWS-KOOP unterstützt eine Kooperation aus bis zu **drei** Schulen. Die Datenstrukturen sollen eine spätere Erweiterung auf mehr Schulen nicht verhindern.
+- **A1** SVWS-KOOP unterstützt eine Kooperation aus bis zu **drei** Schulen. Die Datenstrukturen sollen eine spätere Erweiterung auf mehr Schulen nicht verhindern. Gedacht ist SVWS-KOOP für Kooperationen ab drei Schulen. Zwei Schulen nutzen es, wenn sie die gesamte Stufe gemeinsam blocken. Blocken zwei Schulen jede für sich und bieten nur einzelne Kurse gemeinsam an, reichen die KOOP-Funktionen der Oberstufe im SVWS-Client (ADR 004, F5).
 - **A2** Betroffen sind die Schüler der Jahrgänge **10, EF, Q1 und Q2**. Für den Jahrgang 10 wird die EF.1 des kommenden Schuljahres geplant.
 - **A3** Geblockt wird wie an einer einzelnen Schule: **eine Blockung pro Abiturjahrgang und Halbjahr**. Die Blockung selbst findet in der KOOP-DB mit den vorhandenen Funktionen des SVWS-Servers bzw. SVWS-Clients statt (Blockung anlegen, rechnen, Ergebnis aktivieren). SVWS-KOOP baut die Blockung nicht nach.
 - **A4** SVWS-KOOP übernimmt alle Schritte **vor** und **nach** der Blockung: KOOP-DB einrichten, Daten prüfen, Daten übernehmen, Daten zurückspielen.
@@ -124,7 +124,7 @@ Rückspielen  Schema A + Schema KOOP     Schema B + Schema KOOP     Schema C + S
 
 ### Phase 1: Zusammenführen
 
-1. Jede Kooperationsschule erstellt zu einem vereinbarten Stichtag ein SQLite-Backup ihrer Datenbank (`GET /api/schema/export/{schema}/sqlite`).
+1. Jede Kooperationsschule erstellt zu einem vereinbarten Stichtag ein SQLite-Backup ihrer Datenbank (`GET /db/{schema}/export/sqlite` mit einem SVWS-Administrator oder `GET /api/schema/export/{schema}/sqlite` mit Datenbank-Zugangsdaten, ADR 003).
 2. Auf dem KOOP-Server werden die Backups als eigene Schemata eingespielt (`POST /api/schema/root/import/sqlite/{schema}`).
 3. SVWS-KOOP legt die KOOP-DB an (`POST /api/schema/root/create/{schema}`, `POST /api/schema/create/{schema}/init/{schulnummer}`), passt die Schulstammdaten an (A6) und trägt die Quellschulen mit ihrer Nummer in den Schulkatalog ein (`POST /db/{schema}/schule/schulen/create`, A5).
 4. SVWS-KOOP führt die Konsistenzprüfung durch (A7, A8).
@@ -166,7 +166,7 @@ Prüfungen vor der Rückspielung:
 
 | Schritt | Wo | Benötigte Rechte |
 |---|---|---|
-| SQLite-Backup erstellen | Datenbank jeder Schule | über die API (`/api/schema/export/{schema}/sqlite`): Datenbank-Benutzer des Schemas oder Root. Mit SVWS-Admin oder der Kompetenz „Backup durchführen“ geht es über diesen Endpunkt nicht (ADR 003) |
+| SQLite-Backup erstellen | Datenbank jeder Schule, KOOP-DB beim Verteilen | SVWS-Benutzer mit Kompetenz Admin oder SQLite-Export (`/db/{schema}/export/sqlite`), alternativ Datenbank-Benutzer des Schemas oder Root (`/api/schema/export/{schema}/sqlite`), ADR 003 |
 | Backups einspielen, KOOP-DB anlegen, Schemata löschen | SVWS-Server | Datenbank-Administrator (Endpunkte unter `/api/schema/root/…`) |
 | Konsistenzprüfung, Übernahme, Nachladen, Blockung, Verteilen | KOOP-DB | Benutzer der KOOP-DB, siehe unten |
 | Rückspielung | Datenbank jeder Schule | volle Rechte für Oberstufe und Laufbahnplanung (`OBERSTUFE_LAUFBAHNPLANUNG_*`, `OBERSTUFE_KURSPLANUNG_*` einschließlich `OBERSTUFE_KURSPLANUNG_BLOCKUNG_AKTIVIEREN`) |
@@ -264,6 +264,7 @@ Dashboard mit Kacheln wie in den anderen SVWS-Tools (ADR 001, Abschnitt 4):
 | **Schüler übernehmen** | Jahrgänge wählen, Vorschau, Übernahme, Protokoll | 1 |
 | **Nachladen** | Neueres Backup einer Schule mit der KOOP-DB vergleichen, neue Schüler und Lehrkräfte nachladen, abgegangene Schüler entfernen | 1–2 |
 | **Übersicht KOOP-DB** | Schüler je Stammschule und Jahrgang, Stand der Fachwahlen, Link zur Blockung im SVWS-Client | 2 |
+| **Verteilen** | Stand festhalten, Backup der KOOP-DB für die Schulen erstellen (ADR 004) | 3 |
 | **Rückspielen** | Stammschule wählen, Vorschau der Änderungen, Rückspielung, Protokoll | 4 |
 | **Protokolle** | Alle Läufe einsehen und exportieren | alle |
 

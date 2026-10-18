@@ -87,3 +87,22 @@ export async function ladeKonfiguration(client: AxiosInstance, key: string): Pro
 export async function setzeKonfiguration(client: AxiosInstance, key: string, value: string): Promise<void> {
   await client.put(`/client/config/${APP_NAME}/global/${encodeURIComponent(key)}`, JSON.stringify(value))
 }
+
+// ── Export ───────────────────────────────────────────────────────────────────
+
+/** Der Export einer ganzen Datenbank dauert länger als der Standard-Timeout */
+const TIMEOUT_EXPORT = 15 * 60_000
+
+/** Dateiname aus Content-Disposition, z. B. attachment; filename="kooptest_20261018_1540.sqlite" */
+function dateinameAusHeader(header: unknown): string | null {
+  return typeof header === 'string' ? (/filename="?([^";]+)"?/.exec(header)?.[1] ?? null) : null
+}
+
+/**
+ * Exportiert das Schema als SQLite-Datei (`GET /db/{schema}/export/sqlite`). Braucht einen SVWS-Benutzer mit der
+ * Kompetenz Admin oder SQLite-Export, keine Datenbank-Zugangsdaten.
+ */
+export async function exportiereSqlite(client: AxiosInstance): Promise<{ datei: Blob, dateiname: string | null }> {
+  const r = await client.get('/export/sqlite', { responseType: 'blob', timeout: TIMEOUT_EXPORT })
+  return { datei: r.data as Blob, dateiname: dateinameAusHeader(r.headers['content-disposition']) }
+}

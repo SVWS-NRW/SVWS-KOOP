@@ -3,10 +3,12 @@ import type { QuellInfo } from '@/models/Quelle'
 import { BETROFFENE_JAHRGAENGE, KOOP_KLASSE_10 } from '@/koop/konsistenz'
 import {
   bereiteErzieherVor, bereiteLehrerVor, bereiteSchuelerStammdatenVor, bereiteTelefonVor, fehlendeKatalogEintraege,
-  fachwahlFuerKoop, gruppiereErzieher, istPlatzhalter, istUebernahmeSchueler, koopKlasse, ordneKatalogZu, Protokoll, type Fachwahl,
-  type KatalogName, type KatalogZuordnungen,
+  erstesHalbjahr, fachwahlFuerKoop, fachwahlPruefsumme, gruppiereErzieher, istPlatzhalter, istUebernahmeSchueler, koopKlasse,
+  konfigFachwahlen, ordneKatalogZu, Protokoll, type Fachwahl, type FachwahlEintrag, type KatalogName, type KatalogZuordnungen,
+  type Pruefsummen,
 } from '@/koop/uebernahme'
 import { ladeQuellStand, uebertrageJahrgaenge } from '@/services/konsistenzService'
+import { ladeKonfiguration, setzeKonfiguration } from '@/services/svwsService'
 
 // Übernahme in die KOOP-DB (ADR 002, A9–A13, ADR 003). Alle Schritte sind wiederholbar.
 
@@ -270,22 +272,26 @@ export async function uebernehmeLehrkraefte(koop: AxiosInstance, quellen: QuellK
 // ── 3. Schüler ───────────────────────────────────────────────────────────────
 
 /**
- * Überträgt die Fachwahlen eines Schülers je Fach unverändert aus der Quell-DB, Fächer über das Kürzel zugeordnet
- * (ADR 003). Vergangene Halbjahre bleiben leer. Liefert die Zahl der übertragenen Fächer.
+ * Liest die Fachwahlen eines Schülers je Fach aus der Quell-DB und überträgt sie unverändert in die KOOP-DB, Fächer über
+ * das Kürzel zugeordnet (ADR 003). Vergangene Halbjahre bleiben leer. Mit `schreiben = false` wird nur gelesen.
+ * Liefert die Zahl der übertragenen Fächer und die gelesenen Fachwahlen für die Prüfsumme (ADR 004, Abschnitt 1).
  */
 async function uebertrageFachwahlen(
   quelle: AxiosInstance, quellId: number, koop: AxiosInstance, koopId: number, jahrgang: string, abschnitt: number,
-  quellFaecher: Map<number, string>, koopFaecher: Map<string, number>, protokoll: Protokoll, name: string,
-): Promise<number> {
+  quellFaecher: Map<number, string>, koopFaecher: Map<string, number>, protokoll: Protokoll, name: string, schreiben = true,
+): Promise<{ fachwahlen: number, eintraege: FachwahlEintrag[] }> {
   let fachwahlen = 0
   let entfernt = 0
+  const eintraege: FachwahlEintrag[] = []
   const laufbahn = await quelle.get(`/gost/schueler/${quellId}/laufbahnplanung`, { validateStatus: st => st === 200 || st === 404 })
   for (const fb of (laufbahn.status === 200 ? laufbahn.data.fachbelegungen : []) as Roh[]) {
     if (!fb.abiturFach && !(fb.belegungen as (Roh | null)[]).some(b => b !== null)) continue
-    const kuerzel = quellFaecher.get(fb.fachID)
-    const zielFach = kuerzel ? koopFaecher.get(kuerzel) : undefined
-    if (zielFach === undefined) { protokoll.add('hinweis', 'Schüler', `${name}: Fach ${kuerzel ?? fb.fachID} fehlt in der KOOP-DB`); continue }
+    const kuerzel = quellFaecher.get(fb.fachID) ?? `#${fb.fachID}`
     const wahl = await get<Fachwahl>(quelle, `/gost/schueler/${quellId}/fachwahl/${fb.fachID}`)
+    eintraege.push({ kuerzel, halbjahre: wahl.halbjahre, abiturFach: wahl.abiturFach })
+    if (!schreiben) continue
+    const zielFach = koopFaecher.get(kuerzel)
+    if (zielFach === undefined) { protokoll.add('hinweis', 'Schüler', `${name}: Fach ${kuerzel} fehlt in der KOOP-DB`); continue }
     const fuerKoop = fachwahlFuerKoop(wahl, jahrgang, abschnitt)
     if (!fuerKoop) { entfernt += wahl.halbjahre.filter(h => h !== null).length; continue }
     entfernt += fuerKoop.entfernt
@@ -294,7 +300,13 @@ async function uebertrageFachwahlen(
     fachwahlen++
   }
   if (entfernt > 0) protokoll.add('hinweis', 'Schüler', `${name}: ${entfernt} Belegungen vergangener Halbjahre nicht übernommen`)
-  return fachwahlen
+  return { fachwahlen, eintraege }
+}
+
+/** Prüfsummen der Fachwahlen einer Quellschule aus der KOOP-DB, leer wenn noch keine gespeichert sind */
+export async function ladePruefsummen(koop: AxiosInstance, koopSchulNr: number): Promise<Pruefsummen> {
+  const wert = await ladeKonfiguration(koop, konfigFachwahlen(koopSchulNr))
+  return wert ? JSON.parse(wert) as Pruefsummen : {}
 }
 
 /** Bereits übernommene Schüler der KOOP-DB: Schlüssel „Stammschule|ID in der Quell-DB“ → ID in der KOOP-DB */
@@ -312,6 +324,8 @@ async function ladeVorhandeneSchueler(koop: AxiosInstance, abschnittId: number):
  * Übernimmt die Schüler der Jahrgänge 10, EF, Q1, Q2 (Status Aufnahme, Aktiv, Beurlaubt) aller Quell-DBs
  * mit Stammdaten, Erziehern, Telefonnummern, Sprachenfolge und Fachwahlen (ADR 002, A9–A12).
  * Bereits übernommene Schüler erhalten nur aktualisierte Stammdaten, ihre Fachwahlen werden nicht überschrieben (A21).
+ * Für jeden Schüler wird die Prüfsumme seiner Fachwahlen in der Stammschule gespeichert (ADR 004, Abschnitt 1). Bei bereits
+ * übernommenen Schülern bleibt sie unverändert. Fehlt sie (Übernahme vor Einführung der Prüfsumme), wird sie nachgetragen.
  */
 export async function uebernehmeSchueler(koop: AxiosInstance, quellen: QuellKontext[], fortschritt: Fortschritt, auswahl?: Auswahl): Promise<Protokoll> {
   const protokoll = new Protokoll()
@@ -330,71 +344,102 @@ export async function uebernehmeSchueler(koop: AxiosInstance, quellen: QuellKont
     const quellKlassen = new Map((await get<Roh[]>(q.client, `/klassen/minimal/abschnitt/${quellAbschnitt.id}`)).map(k => [k.id as number, k.kuerzel as string]))
     const schueler = (await get<Roh[]>(q.client, `/schueler/abschnitt/${quellAbschnitt.id}`))
       .filter(s => istUebernahmeSchueler(s as { jahrgang: string, status: number }) && (!auswahl || auswahl.has(auswahlSchluessel(q.info.nr, s.id))))
+    const pruefsummen = await ladePruefsummen(koop, q.info.koopSchulNr)
+    let geaendert = 0
+    let nachgetragen = 0
+    const merke = (s: Roh, eintraege: FachwahlEintrag[]) => {
+      const ab = erstesHalbjahr(s.jahrgang, abschnitt.abschnitt)
+      pruefsummen[String(s.id)] = { ab, p: fachwahlPruefsumme(eintraege, ab) }
+      geaendert++
+    }
 
-    await parallel(schueler, PARALLEL_SCHREIBEN, async (s, i) => {
-      fortschritt(`Schule ${q.info.nr}: ${s.nachname}, ${s.vorname}`, i + 1, schueler.length)
-      const name = `${s.nachname}, ${s.vorname} (${s.jahrgang}, Schule ${q.info.nr})`
-      try {
-        const stammdaten = await get(q.client, `/schueler/${s.id}/stammdaten`)
-        const patch = bereiteSchuelerStammdatenVor(stammdaten, kataloge, q.info.koopSchulNr, s.id)
-        const vorhandeneId = vorhanden.get(`${q.info.koopSchulNr}|${s.id}`)
-        if (vorhandeneId !== undefined) {
-          await koop.patch(`/schueler/${vorhandeneId}/stammdaten`, patch)
-          // Fachwahlen werden nicht überschrieben (A21), aber nachgeholt, wenn eine frühere Übernahme abgebrochen ist
-          const koopLaufbahn = await koop.get(`/gost/schueler/${vorhandeneId}/laufbahnplanung`, { validateStatus: st => st === 200 || st === 404 })
-          const hatFachwahlen = koopLaufbahn.status === 200 && (koopLaufbahn.data.fachbelegungen as Roh[]).some(fb => fb.abiturFach || (fb.belegungen as (Roh | null)[]).some(x => x !== null))
-          if (hatFachwahlen) {
-            protokoll.add('aktualisiert', 'Schüler', `${name}: Stammdaten`)
-          } else {
-            const n = await uebertrageFachwahlen(q.client, s.id, koop, vorhandeneId, s.jahrgang, abschnitt.abschnitt, quellFaecher, koopFaecher, protokoll, name)
-            protokoll.add('aktualisiert', 'Schüler', `${name}: Stammdaten, ${n} Fachwahlen nachgeholt`)
+    try {
+      await parallel(schueler, PARALLEL_SCHREIBEN, async (s, i) => {
+        fortschritt(`Schule ${q.info.nr}: ${s.nachname}, ${s.vorname}`, i + 1, schueler.length)
+        const name = `${s.nachname}, ${s.vorname} (${s.jahrgang}, Schule ${q.info.nr})`
+        try {
+          const stammdaten = await get(q.client, `/schueler/${s.id}/stammdaten`)
+          const patch = bereiteSchuelerStammdatenVor(stammdaten, kataloge, q.info.koopSchulNr, s.id)
+          const vorhandeneId = vorhanden.get(`${q.info.koopSchulNr}|${s.id}`)
+          if (vorhandeneId !== undefined) {
+            await koop.patch(`/schueler/${vorhandeneId}/stammdaten`, patch)
+            // Fachwahlen werden nicht überschrieben (A21), aber nachgeholt, wenn eine frühere Übernahme abgebrochen ist
+            const koopLaufbahn = await koop.get(`/gost/schueler/${vorhandeneId}/laufbahnplanung`, { validateStatus: st => st === 200 || st === 404 })
+            const hatFachwahlen = koopLaufbahn.status === 200 && (koopLaufbahn.data.fachbelegungen as Roh[]).some(fb => fb.abiturFach || (fb.belegungen as (Roh | null)[]).some(x => x !== null))
+            if (hatFachwahlen) {
+              protokoll.add('aktualisiert', 'Schüler', `${name}: Stammdaten`)
+              if (!pruefsummen[String(s.id)]) {
+                const { eintraege } = await uebertrageFachwahlen(q.client, s.id, koop, vorhandeneId, s.jahrgang, abschnitt.abschnitt, quellFaecher, koopFaecher, protokoll, name, false)
+                merke(s, eintraege)
+                nachgetragen++
+              }
+            } else {
+              const { fachwahlen: n, eintraege } = await uebertrageFachwahlen(q.client, s.id, koop, vorhandeneId, s.jahrgang, abschnitt.abschnitt, quellFaecher, koopFaecher, protokoll, name)
+              merke(s, eintraege)
+              protokoll.add('aktualisiert', 'Schüler', `${name}: Stammdaten, ${n} Fachwahlen nachgeholt`)
+            }
+            return
           }
-          return
-        }
-        const klasse = koopKlasse(s.jahrgang, quellKlassen.get(s.idKlasse) ?? '')
-        const neu = (await koop.post('/schueler/create', {
-          nachname: stammdaten.nachname, vorname: stammdaten.vorname, alleVornamen: stammdaten.alleVornamen,
-          geschlecht: stammdaten.geschlecht, geburtsdatum: stammdaten.geburtsdatum, status: stammdaten.status,
-          anmeldedatum: stammdaten.anmeldedatum, aufnahmedatum: stammdaten.aufnahmedatum,
-          idSchuljahresabschnitt: abschnitt.id, idJahrgang: koopJahrgaenge.get(s.jahrgang), idKlasse: koopKlassen.get(klasse) ?? null,
-        })).data
-        const id = neu.id as number
-        await koop.patch(`/schueler/${id}/stammdaten`, patch)
+          const klasse = koopKlasse(s.jahrgang, quellKlassen.get(s.idKlasse) ?? '')
+          const neu = (await koop.post('/schueler/create', {
+            nachname: stammdaten.nachname, vorname: stammdaten.vorname, alleVornamen: stammdaten.alleVornamen,
+            geschlecht: stammdaten.geschlecht, geburtsdatum: stammdaten.geburtsdatum, status: stammdaten.status,
+            anmeldedatum: stammdaten.anmeldedatum, aufnahmedatum: stammdaten.aufnahmedatum,
+            idSchuljahresabschnitt: abschnitt.id, idJahrgang: koopJahrgaenge.get(s.jahrgang), idKlasse: koopKlassen.get(klasse) ?? null,
+          })).data
+          const id = neu.id as number
+          await koop.patch(`/schueler/${id}/stammdaten`, patch)
 
-        // Einzelne Einträge, die der Server ablehnt (z. B. nicht mehr zulässige Sprachkürzel), brechen den Schüler nicht ab
-        const versuche = async (was: string, aktion: () => Promise<unknown>) => {
-          try {
-            await aktion()
-          } catch (x) {
-            protokoll.add('hinweis', 'Schüler', `${name}: ${was} nicht übernommen (${fehlertext(x)})`)
+          // Einzelne Einträge, die der Server ablehnt (z. B. nicht mehr zulässige Sprachkürzel), brechen den Schüler nicht ab
+          const versuche = async (was: string, aktion: () => Promise<unknown>) => {
+            try {
+              await aktion()
+            } catch (x) {
+              protokoll.add('hinweis', 'Schüler', `${name}: ${was} nicht übernommen (${fehlertext(x)})`)
+            }
           }
-        }
-        for (const gruppe of gruppiereErzieher(await get<(Roh & { id: number })[]>(q.client, `/schueler/${s.id}/erzieher`))) {
-          await versuche(`Erzieher ${gruppe[0].nachname ?? ''}`, async () => {
-            const erster = (await koop.post(`/schueler/erzieher/new/${id}/1`, bereiteErzieherVor(gruppe[0], kataloge))).data
-            if (gruppe[1]) await koop.patch(`/erzieher/${erster.id}/stammdaten/2`, bereiteErzieherVor(gruppe[1], kataloge))
-          })
-        }
-        for (const t of await get<Roh[]>(q.client, `/schueler/${s.id}/telefone`)) {
-          await versuche(`Telefonnummer ${t.telefonnummer ?? ''}`, () => koop.post(`/schueler/${id}/telefon`, bereiteTelefonVor(t, kataloge)))
-        }
-        for (const b of await get<Roh[]>(q.client, `/schueler/${s.id}/sprachen/belegungen`)) {
-          const { id: _id, ...daten } = b
-          await versuche(`Sprachbelegung ${b.sprache}`, () => koop.post(`/schueler/${id}/sprachen/belegungen`, daten))
-        }
-        for (const p of await get<Roh[]>(q.client, `/schueler/${s.id}/sprachen/pruefungen`)) {
-          // ersetzteSprache liefert der Server beim Lesen, kennt es beim Anlegen aber nicht (ADR 003)
-          const { id: _id, ersetzteSprache: _e, ...daten } = p
-          await versuche(`Sprachprüfung ${p.sprache}`, () => koop.post(`/schueler/${id}/sprachen/pruefungen`, daten))
-        }
+          for (const gruppe of gruppiereErzieher(await get<(Roh & { id: number })[]>(q.client, `/schueler/${s.id}/erzieher`))) {
+            await versuche(`Erzieher ${gruppe[0].nachname ?? ''}`, async () => {
+              const erster = (await koop.post(`/schueler/erzieher/new/${id}/1`, bereiteErzieherVor(gruppe[0], kataloge))).data
+              if (gruppe[1]) await koop.patch(`/erzieher/${erster.id}/stammdaten/2`, bereiteErzieherVor(gruppe[1], kataloge))
+            })
+          }
+          for (const t of await get<Roh[]>(q.client, `/schueler/${s.id}/telefone`)) {
+            await versuche(`Telefonnummer ${t.telefonnummer ?? ''}`, () => koop.post(`/schueler/${id}/telefon`, bereiteTelefonVor(t, kataloge)))
+          }
+          for (const b of await get<Roh[]>(q.client, `/schueler/${s.id}/sprachen/belegungen`)) {
+            const { id: _id, ...daten } = b
+            await versuche(`Sprachbelegung ${b.sprache}`, () => koop.post(`/schueler/${id}/sprachen/belegungen`, daten))
+          }
+          for (const p of await get<Roh[]>(q.client, `/schueler/${s.id}/sprachen/pruefungen`)) {
+            // ersetzteSprache liefert der Server beim Lesen, kennt es beim Anlegen aber nicht (ADR 003)
+            const { id: _id, ersetzteSprache: _e, ...daten } = p
+            await versuche(`Sprachprüfung ${p.sprache}`, () => koop.post(`/schueler/${id}/sprachen/pruefungen`, daten))
+          }
 
-        const fachwahlen = await uebertrageFachwahlen(q.client, s.id, koop, id, s.jahrgang, abschnitt.abschnitt, quellFaecher, koopFaecher, protokoll, name)
-        vorhanden.set(`${q.info.koopSchulNr}|${s.id}`, id)
-        protokoll.add('neu', 'Schüler', `${name}: ${fachwahlen} Fachwahlen`)
-      } catch (x) {
-        protokoll.add('fehler', 'Schüler', `${name}: ${fehlertext(x)}`)
+          const { fachwahlen, eintraege } = await uebertrageFachwahlen(q.client, s.id, koop, id, s.jahrgang, abschnitt.abschnitt, quellFaecher, koopFaecher, protokoll, name)
+          merke(s, eintraege)
+          vorhanden.set(`${q.info.koopSchulNr}|${s.id}`, id)
+          protokoll.add('neu', 'Schüler', `${name}: ${fachwahlen} Fachwahlen`)
+        } catch (x) {
+          protokoll.add('fehler', 'Schüler', `${name}: ${fehlertext(x)}`)
+        }
+      })
+    } finally {
+      if (nachgetragen > 0) {
+        protokoll.add('hinweis', 'Prüfsummen', `Schule ${q.info.nr}: Für ${nachgetragen} bereits übernommene Schüler fehlte die Prüfsumme der Fachwahlen. `
+          + 'Sie wurde aus dem heutigen Stand der Stammschule nachgetragen.')
       }
-    })
+      // Auch nach einem Abbruch speichern, was bis dahin berechnet wurde
+      if (geaendert > 0) {
+        try {
+          await setzeKonfiguration(koop, konfigFachwahlen(q.info.koopSchulNr), JSON.stringify(pruefsummen))
+          protokoll.add('aktualisiert', 'Prüfsummen', `Schule ${q.info.nr}: ${geaendert} Prüfsummen der Fachwahlen gespeichert`)
+        } catch (x) {
+          protokoll.add('fehler', 'Prüfsummen', `Schule ${q.info.nr}: ${fehlertext(x)}`)
+        }
+      }
+    }
   }
   fortschritt('fertig')
   return protokoll

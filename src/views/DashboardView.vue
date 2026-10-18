@@ -66,6 +66,7 @@ const kacheln: Kachel[] = [
   { titel: 'Schüler übernehmen', untertitel: 'Stammdaten, Erzieher, Sprachenfolge und Fachwahlen', icon: 'pi pi-users', phase: '1', route: 'uebernahme' },
   { titel: 'Nachladen', untertitel: 'Neue und abgegangene Schüler und Lehrkräfte abgleichen', icon: 'pi pi-refresh', phase: '1–2', route: 'nachladen' },
   { titel: 'Übersicht KOOP-DB', untertitel: 'Schulen, Stufen und Lehrkräfte, Fachwahlen und Blockungen', icon: 'pi pi-chart-bar', phase: '2', route: 'uebersicht' },
+  { titel: 'Verteilen', untertitel: 'Stand festhalten und Backup der KOOP-DB für die Schulen erstellen', icon: 'pi pi-share-alt', phase: '3', route: 'verteilen' },
   { titel: 'Rückspielen', untertitel: 'Kurse, Leistungsdaten und Fachwahlen in die Stammschule', icon: 'pi pi-reply', phase: '4' },
   { titel: 'Protokolle', untertitel: 'Alle Läufe einsehen und exportieren', icon: 'pi pi-list', phase: 'alle' },
 ]

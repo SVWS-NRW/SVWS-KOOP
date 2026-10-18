@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   katalogSchluessel, fehlendeKatalogEintraege, ordneKatalogZu, bereiteSchuelerStammdatenVor, bereiteErzieherVor,
   bereiteTelefonVor, gruppiereErzieher, koopKlasse, bereiteLehrerVor, istPlatzhalter, Protokoll, vergangeneHalbjahre, fachwahlFuerKoop,
+  fachwahlPruefsumme, erstesHalbjahr, konfigFachwahlen, istUebernahmeSchueler,
   type KatalogZuordnungen,
 } from './uebernahme'
 
@@ -104,5 +105,42 @@ describe('Fachwahlen', () => {
 
   it('liefert null, wenn nach dem Leeren nichts mehr gewählt ist', () => {
     expect(fachwahlFuerKoop({ halbjahre: ['M', 'M', null, null, null, null], abiturFach: null, idReferenzfach: null }, 'Q1', 1)).toBeNull()
+  })
+})
+
+describe('istUebernahmeSchueler', () => {
+  it('übernimmt Jahrgänge 10 bis Q2 mit Status Aufnahme, Aktiv, Beurlaubt', () => {
+    expect(istUebernahmeSchueler({ jahrgang: 'Q1', status: 3 })).toBe(true)
+    expect(istUebernahmeSchueler({ jahrgang: '09', status: 2 })).toBe(false)
+    expect(istUebernahmeSchueler({ jahrgang: 'EF', status: 9 })).toBe(false)
+  })
+})
+
+describe('fachwahlPruefsumme', () => {
+  const d = { kuerzel: 'D', halbjahre: ['S', 'S', 'S', 'S', 'S', 'S'], abiturFach: null }
+  const m = { kuerzel: 'M', halbjahre: ['S', 'S', 'LK', 'LK', 'LK', 'LK'], abiturFach: 1 }
+
+  it('hängt nicht von der Reihenfolge der Fächer ab', () => {
+    expect(fachwahlPruefsumme([d, m], 2)).toBe(fachwahlPruefsumme([m, d], 2))
+    expect(fachwahlPruefsumme([d, m], 2)).toMatch(/^[0-9a-f]{8}$/)
+  })
+
+  it('erkennt Änderungen ab dem ersten Halbjahr, nicht davor', () => {
+    const basis = fachwahlPruefsumme([d, m], 2)
+    expect(fachwahlPruefsumme([d, { ...m, halbjahre: ['M', 'M', 'LK', 'LK', 'LK', 'LK'] }], 2)).toBe(basis)
+    expect(fachwahlPruefsumme([d, { ...m, halbjahre: ['S', 'S', 'LK', 'LK', 'LK', 'S'] }], 2)).not.toBe(basis)
+    expect(fachwahlPruefsumme([d, { ...m, abiturFach: 2 }], 2)).not.toBe(basis)
+  })
+
+  it('lässt Fächer ohne Wahl ab dem ersten Halbjahr weg', () => {
+    const nurEF = { kuerzel: 'PH', halbjahre: ['M', 'M', null, null, null, null], abiturFach: null }
+    expect(fachwahlPruefsumme([d, nurEF], 2)).toBe(fachwahlPruefsumme([d], 2))
+    expect(fachwahlPruefsumme([d, nurEF], 0)).not.toBe(fachwahlPruefsumme([d], 0))
+  })
+
+  it('bestimmt das erste Halbjahr und den Schlüssel', () => {
+    expect(erstesHalbjahr('Q1', 1)).toBe(2)
+    expect(erstesHalbjahr('10', 2)).toBe(0)
+    expect(konfigFachwahlen(192806)).toBe('fachwahlen.192806')
   })
 })

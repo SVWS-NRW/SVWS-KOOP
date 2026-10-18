@@ -2,13 +2,13 @@
 
 Werkzeug für Schulen mit gymnasialer Oberstufe in NRW, die ihre Oberstufenkurse in einer **Kooperation gemeinsam blocken**.
 
-Arbeiten bis zu drei Schulen zusammen, können ihre Schülerinnen und Schüler dieselben Kurse besuchen. So lassen sich mehr Kurse einrichten und ein breiteres Fächerangebot machen. SVWS-KOOP führt dafür die Daten der Kooperationsschulen in einer gemeinsamen Datenbank zusammen. Dort wird mit den vorhandenen Werkzeugen des SVWS-Servers geblockt, danach bringt SVWS-KOOP die Ergebnisse in die Datenbank jeder Schule zurück.
+Arbeiten bis zu drei Schulen zusammen und blocken die gesamte Stufe gemeinsam, können ihre Schülerinnen und Schüler dieselben Kurse besuchen. So lassen sich mehr Kurse einrichten und ein breiteres Fächerangebot machen. SVWS-KOOP führt dafür die Daten der Kooperationsschulen in einer gemeinsamen Datenbank zusammen. Dort wird mit den vorhandenen Werkzeugen des SVWS-Servers geblockt, danach bringt SVWS-KOOP die Ergebnisse in die Datenbank jeder Schule zurück.
 
 SVWS-KOOP gehört zur Familie der [SVWS-Tools](https://github.com/SVWS-NRW/SVWS-Tools) und sieht aus und funktioniert wie SVWS-Import, SVWS-Prognos und SVWS-Konferenz.
 
 ## Projektstatus
 
-**Phase 1 umgesetzt.** Architektur, fachliche Anforderungen und die Prüfung der SVWS-API sind beschlossen ([ADR 001](docs/adr/adr001-architektur-und-erscheinungsbild.md), [ADR 002](docs/adr/adr002-fachliche-anforderungen.md), [ADR 003](docs/adr/adr003-pruefung-svws-api.md)). Umgesetzt sind der Assistent „KOOP-DB einrichten“ (auf der Anmeldeseite), die Konsistenzprüfung, die Übernahme von Lehrkräften und Schülern und das Nachladen und die Übersicht der KOOP-DB. Rückspielung und Protokolle sind in Vorbereitung.
+**Phase 1 umgesetzt.** Architektur, fachliche Anforderungen und die Prüfung der SVWS-API sind beschlossen ([ADR 001](docs/adr/adr001-architektur-und-erscheinungsbild.md), [ADR 002](docs/adr/adr002-fachliche-anforderungen.md), [ADR 003](docs/adr/adr003-pruefung-svws-api.md)). Die Rückspielung ist in [ADR 004](docs/adr/adr004-rueckspielung.md) festgelegt. Umgesetzt sind der Assistent „KOOP-DB einrichten“ (auf der Anmeldeseite), die Konsistenzprüfung, die Übernahme von Lehrkräften und Schülern und das Nachladen, die Übersicht der KOOP-DB und das Verteilen. Rückspielung und Protokolle sind in Vorbereitung.
 
 ## So funktioniert es
 
@@ -74,7 +74,7 @@ Projektstruktur (ADR 001, Abschnitt 2):
 
 ```
 src/
-├── views/        Seiten (Anmeldung, Einrichten, Dashboard, Konsistenz, Übernahme, Nachladen, Übersicht)
+├── views/        Seiten (Anmeldung, Einrichten, Dashboard, Konsistenz, Übernahme, Nachladen, Übersicht, Verteilen)
 ├── components/   ThemeToggle, LegalFooter
 ├── stores/       Pinia-Stores
 ├── services/     apiClient (mehrere Verbindungen), svwsService, errorService

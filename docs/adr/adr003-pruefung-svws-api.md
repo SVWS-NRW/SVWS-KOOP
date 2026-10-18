@@ -20,7 +20,8 @@ Geprüft wurde in zwei Schritten:
 | KOOP-DB anlegen | `POST /api/schema/root/create/{schema}` | ✅ getestet, siehe 1 |
 | KOOP-DB initialisieren | `POST /api/schema/create/{schema}/init/{schulnummer}` | ✅ getestet, braucht den **Datenbank-Benutzer des Schemas**, siehe 1 |
 | Jahrgänge der KOOP-DB | `PATCH /db/{schema}/jahrgaenge/{id}` | ⚠️ nach `init` unvollständig, müssen angeglichen werden, siehe 1 |
-| Backup erstellen | `GET /api/schema/export/{schema}/sqlite` | ✅ getestet, braucht **Datenbank-Zugangsdaten**, siehe 1 |
+| Backup erstellen | `GET /db/{schema}/export/sqlite` | ✅ getestet, mit SVWS-Benutzer (Admin oder SQLite-Export), siehe 1 |
+| Backup erstellen (privilegiert) | `GET /api/schema/export/{schema}/sqlite` | ✅ getestet, braucht **Datenbank-Zugangsdaten**, siehe 1 |
 | Backup einspielen | `POST /api/schema/root/import/sqlite/{schema}` | ✅ getestet, siehe 1 |
 | Root-Endpunkte aus dem Browser | `/api/schema/root/…` | ⚠️ Einschränkung durch Port für privilegierte Zugriffe, siehe 2 |
 | Benutzer anlegen, Adminrechte, Kennwort | `POST /db/{schema}/benutzer/new`, `…/{id}/addAdmin`, `…/{id}/password` | ✅ getestet, siehe 1 |
@@ -96,6 +97,8 @@ Achtung beim Lesen: Ist die Schulgliederung leer (`NULL`), liefert die API den S
 - Am Testserver bestätigt (2026-10-16): In einer frisch angelegten KOOP-DB mit GE-Schulnummer (192806) und mit GY-Schulnummer (168890) antwortet `abiturjahrgang/new` für die EF ohne Gliederung mit 404. Nach `PATCH idSchulgliederung: 0` steht `***` in der Datenbank, und der Abiturjahrgang 2029 wird angelegt. Die Testdatenbank `gesamtschule` verwendet ebenfalls `***`.
 
 **Backup erstellen** (`GET /api/schema/export/{schema}/sqlite`, getestet): Funktioniert nur mit **Datenbank-Zugangsdaten**, also mit dem Root-Benutzer oder dem Datenbank-Benutzer des Schemas. Mit dem SVWS-Benutzer `Admin` antwortet der Server mit 401. Die Kompetenz „Backup durchführen“ (`EXTRAS_BACKUP_DURCHFUEHREN`) wird von keinem Endpunkt geprüft. Export von `svwsdb`: 30 MB in 12 Sekunden.
+
+**Backup mit SVWS-Benutzer** (`GET /db/{schema}/export/sqlite`, getestet 2026-10-18): Exportiert das Schema, an dem der Benutzer angemeldet ist. Verlangt die Kompetenz Admin oder `DATENBANK_SQLITE_EXPORT` (`APIDatabase.exportSQLite`), keine Datenbank-Zugangsdaten. Der Server schlägt im Header `Content-Disposition` einen Dateinamen vor (z. B. `kooptest_20261018_1540.sqlite`). Export von `kooptest` mit `Admin`: 8 MB in 3 Sekunden. SVWS-KOOP verwendet diesen Endpunkt zum Verteilen (ADR 004).
 
 **Einspielen** über die privilegierte API (`POST /api/schema/root/import/sqlite/{schema}`, multipart, Basic Auth mit Root, getestet): Felder `database` (SQLite-Datei), `schemaUsername`, `schemaUserPassword`. Der Datenbank-Benutzer wird für das neue Schema angelegt. Test: Backup von `svwsdb` als `koopquelle_test` eingespielt, 17 Sekunden. Die SVWS-Benutzer der Quelle bleiben mit ihren Kennwörtern erhalten, SVWS-KOOP kann die Quell-DB also mit denselben Zugangsdaten lesen wie an der Schule.
 

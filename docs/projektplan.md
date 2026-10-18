@@ -7,10 +7,11 @@ Grundlage sind die angenommenen Architekturentscheidungen:
 - [ADR 001](adr/adr001-architektur-und-erscheinungsbild.md): Architektur und Erscheinungsbild
 - [ADR 002](adr/adr002-fachliche-anforderungen.md): Fachliche Anforderungen
 - [ADR 003](adr/adr003-pruefung-svws-api.md): Prüfung der SVWS-API
+- [ADR 004](adr/adr004-rueckspielung.md): Rückspielung in die Stammschulen
 
 ## Erledigt
 
-- [x] Architektur, fachliche Anforderungen und API-Prüfung (ADR 001–003)
+- [x] Architektur, fachliche Anforderungen und API-Prüfung (ADR 001–003), Rückspielung (ADR 004)
 - [x] Testserver mit den Schemata `kooptest` (KOOP-DB) und `koopquelle_test` (Kopie von `svwsdb`)
 - [x] Projektgerüst: Anmeldung an der KOOP-DB, Dashboard mit Kacheln, Design, Dark Mode, Fußzeile, Electron, Release-Skript
 - [x] Fachlogik für Lehrerkürzel `<Kürzel>-<Nr>` mit Tests
@@ -65,13 +66,22 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 - [ ] Link in den SVWS-Client im Browser prüfen (Route aus dem Quellcode des Clients abgeleitet)
 - [ ] Kooperationskurse: Schüler, die Kurse an einer Partnerschule besuchen
 
-### 4. Rückspielung (Phase 4)
+### 4. Rückspielung (Phase 4, ADR 004)
 
-- [ ] Prüfungen: zu altes Backup, in der Stammschule geänderte Fachwahlen
-- [ ] Kurse und Leistungsdaten mit `koopSchule` schreiben
+Vorarbeiten:
+- [x] Prüfsumme der Fachwahlen bei Übernahme und Nachladen speichern (`fachwahlen.<Schulnummer>`), fehlende werden beim nächsten Lauf nachgetragen
+- [x] Kachel „Verteilen“: `stand` setzen, SQLite-Backup der KOOP-DB herunterladen (`/db/{schema}/export/sqlite`, Admin reicht)
+- [ ] In `kooptest` Lehrkräfte an Blockungskursen zuordnen und die Blockungen erneut aktivieren
+
+Rückspielung:
+- [ ] Anmeldung an der Datenbank der Schule, Erkennung der Quellschule über die Schulnummer
+- [ ] Vorschau mit Fehlern, Warnungen und Hinweisen je Abiturjahrgang und Halbjahr, Zuordnung von Kursen ohne eindeutige Lehrkraft
+- [ ] Eigene Kurse und Leistungsdaten der Schule unverändert lassen, Konflikte (gleiches Fach, gleiches Kurskürzel) melden, eigene Blockungen der Schule deutlich warnen
+- [ ] Angelegte Kurse, Leistungsdaten und Blockung in der Schule vermerken, bei erneuter Rückspielung nur diese ersetzen
 - [ ] Platzhalter-Lehrkräfte je Partnerschule anlegen
-- [ ] Geänderte Fachwahlen übertragen
-- [ ] Blockung in der Stammschule mit `restore` wiederherstellen
+- [ ] Fachwahlen ab dem aktuellen Halbjahr schreiben
+- [ ] Kurse und Leistungsdaten mit `koopSchule` schreiben, `restore` (nicht bei eigener Blockung der Schule)
+- [ ] `letzteRueckspielung` speichern, Protokoll, Hinweis auf das Löschen des KOOP-Schemas
 
 ### 5. Abrunden
 
