@@ -1,7 +1,15 @@
 // Übernahme von Lehrkräften und Schülern in die KOOP-DB (ADR 002, A9–A13). Reine Logik ohne API.
 
 import { bildeKoopKuerzel, zerlegeKoopKuerzel } from './lehrerKuerzel'
-import { KOOP_KLASSE_10 } from './konsistenz'
+import { BETROFFENE_JAHRGAENGE, KOOP_KLASSE_10 } from './konsistenz'
+
+/** Schülerstatus, die übernommen werden: Aufnahme, Aktiv, Beurlaubt (Statistikkatalog SchuelerStatus) */
+export const UEBERNAHME_STATUS = new Set([0, 2, 3])
+
+/** Schüler, die übernommen werden: Jahrgänge 10, EF, Q1, Q2 mit Status Aufnahme, Aktiv, Beurlaubt (ADR 002, A2) */
+export function istUebernahmeSchueler(s: { jahrgang: string, status: number }): boolean {
+  return (BETROFFENE_JAHRGAENGE as readonly string[]).includes(s.jahrgang) && UEBERNAHME_STATUS.has(s.status)
+}
 
 /** Zuordnung einer ID der Quell-DB zu einer ID der KOOP-DB */
 export type Zuordnung = Map<number, number>
@@ -132,7 +140,7 @@ export function quellNrAusKuerzel(koopKuerzel: string): number | null {
 
 // ── Protokoll (A13) ──────────────────────────────────────────────────────────
 
-export type ProtokollArt = 'neu' | 'aktualisiert' | 'uebersprungen' | 'hinweis' | 'fehler'
+export type ProtokollArt = 'neu' | 'aktualisiert' | 'entfernt' | 'uebersprungen' | 'hinweis' | 'fehler'
 
 export interface ProtokollEintrag {
   art: ProtokollArt

@@ -42,19 +42,7 @@
         <span class="hinweis">{{ fortschritt.text }}</span>
       </div>
 
-      <template v-if="ergebnisse[teil.id]">
-        <div class="zaehler-zeile">
-          <span v-for="art in ARTEN" :key="art" class="zaehler" :class="art">{{ ergebnisse[teil.id]!.anzahl(art) }} {{ ART_TITEL[art] }}</span>
-        </div>
-        <details class="protokoll" :open="ergebnisse[teil.id]!.anzahl('fehler') > 0">
-          <summary>Protokoll ({{ ergebnisse[teil.id]!.eintraege.length }} Einträge)</summary>
-          <ul>
-            <li v-for="(e, i) in sortiert(ergebnisse[teil.id]!)" :key="i" :class="e.art">
-              <span class="art">{{ ART_TITEL[e.art] }}</span> <span class="bereich">{{ e.bereich }}</span> {{ e.text }}
-            </li>
-          </ul>
-        </details>
-      </template>
+      <ProtokollAnzeige v-if="ergebnisse[teil.id]" :protokoll="ergebnisse[teil.id]!" />
     </section>
 
     <LegalFooter />
@@ -71,6 +59,7 @@ import ProgressBar from 'primevue/progressbar'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import LegalFooter from '@/components/LegalFooter.vue'
 import QuellAnmeldung from '@/components/QuellAnmeldung.vue'
+import ProtokollAnzeige from '@/components/ProtokollAnzeige.vue'
 import { useQuellenStore } from '@/stores/quellen'
 import { useAuthStore } from '@/stores/auth'
 import { useErrorService } from '@/services/errorService'
@@ -78,7 +67,7 @@ import { KOOP, getClient } from '@/services/apiClient'
 import { ladeQuellStand } from '@/services/konsistenzService'
 import { bereiteKoopVor, uebernehmeLehrkraefte, uebernehmeSchueler, type QuellKontext } from '@/services/uebernahmeService'
 import { pruefeKonsistenz } from '@/koop/konsistenz'
-import type { Protokoll, ProtokollArt, ProtokollEintrag } from '@/koop/uebernahme'
+import type { Protokoll } from '@/koop/uebernahme'
 
 type TeilId = 'vorbereiten' | 'lehrkraefte' | 'schueler'
 
@@ -87,9 +76,6 @@ const teile: { id: TeilId, nr: number, titel: string, beschreibung: string }[] =
   { id: 'lehrkraefte', nr: 2, titel: 'Lehrkräfte übernehmen', beschreibung: 'Alle aktiven Lehrkräfte mit Kürzel <Kürzel>-<Nr> und Stammschule, ohne Platzhalter. Vorhandene Lehrkräfte werden aktualisiert.' },
   { id: 'schueler', nr: 3, titel: 'Schüler übernehmen', beschreibung: 'Schüler der Jahrgänge 10, EF, Q1, Q2 (Aufnahme, Aktiv, Beurlaubt) mit Stammdaten, Erziehern, Telefonnummern, Sprachenfolge und Fachwahlen. Bereits übernommene Schüler erhalten nur aktualisierte Stammdaten. Das kann einige Minuten dauern.' },
 ]
-
-const ARTEN: ProtokollArt[] = ['neu', 'aktualisiert', 'uebersprungen', 'hinweis', 'fehler']
-const ART_TITEL: Record<ProtokollArt, string> = { neu: 'neu', aktualisiert: 'aktualisiert', uebersprungen: 'übersprungen', hinweis: 'Hinweise', fehler: 'Fehler' }
 
 const router = useRouter()
 const confirm = useConfirm()
@@ -151,11 +137,6 @@ function fuehreAus(id: TeilId) {
       }
     },
   })
-}
-
-const REIHENFOLGE: Record<ProtokollArt, number> = { fehler: 0, hinweis: 1, uebersprungen: 2, neu: 3, aktualisiert: 4 }
-function sortiert(p: Protokoll): ProtokollEintrag[] {
-  return [...p.eintraege].sort((a, b) => REIHENFOLGE[a.art] - REIHENFOLGE[b.art])
 }
 
 </script>
@@ -238,46 +219,4 @@ function sortiert(p: Protokoll): ProtokollEintrag[] {
   gap: 0.35rem;
 }
 
-.zaehler-zeile {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  font-size: 0.85rem;
-}
-
-.zaehler.neu { color: var(--koop-ok); font-weight: 600; }
-.zaehler.fehler { color: var(--koop-fehler); font-weight: 600; }
-.zaehler.hinweis { color: var(--koop-warnung); font-weight: 600; }
-
-.protokoll summary {
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.protokoll ul {
-  list-style: none;
-  margin: 0.6rem 0 0;
-  padding: 0;
-  max-height: 22rem;
-  overflow: auto;
-  font-size: 0.82rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.protokoll .art {
-  display: inline-block;
-  min-width: 6.5rem;
-  font-weight: 600;
-}
-
-.protokoll .bereich {
-  color: var(--p-text-muted-color);
-  margin-right: 0.4rem;
-}
-
-.protokoll li.fehler .art { color: var(--koop-fehler); }
-.protokoll li.hinweis .art { color: var(--koop-warnung); }
-.protokoll li.neu .art { color: var(--koop-ok); }
 </style>

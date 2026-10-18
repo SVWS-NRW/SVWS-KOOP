@@ -3,7 +3,7 @@ import type { QuellInfo } from '@/models/Quelle'
 import { BETROFFENE_JAHRGAENGE, KOOP_KLASSE_10 } from '@/koop/konsistenz'
 import {
   bereiteErzieherVor, bereiteLehrerVor, bereiteSchuelerStammdatenVor, bereiteTelefonVor, fehlendeKatalogEintraege,
-  fachwahlFuerKoop, gruppiereErzieher, istPlatzhalter, koopKlasse, ordneKatalogZu, Protokoll, type Fachwahl,
+  fachwahlFuerKoop, gruppiereErzieher, istPlatzhalter, istUebernahmeSchueler, koopKlasse, ordneKatalogZu, Protokoll, type Fachwahl,
   type KatalogName, type KatalogZuordnungen,
 } from '@/koop/uebernahme'
 import { ladeQuellStand, uebertrageJahrgaenge } from '@/services/konsistenzService'
@@ -17,10 +17,17 @@ export interface QuellKontext {
 
 export type Fortschritt = (text: string, erledigt?: number, gesamt?: number) => void
 
-type Roh = Record<string, any>
+/**
+ * Optionale Auswahl für Lehrkräfte bzw. Schüler: Schlüssel „<Nr der Quellschule>|<ID in der Quell-DB>“ (auswahlSchluessel).
+ * Ohne Auswahl werden alle bearbeitet, mit Auswahl nur diese (Nachladen, ADR 002, A21).
+ */
+export type Auswahl = Set<string>
 
-/** Schülerstatus, die übernommen werden: Aufnahme, Aktiv, Beurlaubt (Statistikkatalog SchuelerStatus) */
-export const UEBERNAHME_STATUS = new Set([0, 2, 3])
+export function auswahlSchluessel(nr: number, quellId: number): string {
+  return `${nr}|${quellId}`
+}
+
+type Roh = Record<string, any>
 
 const ABITURJAHR_VORLAGE = -1
 
@@ -53,7 +60,7 @@ async function get<T = any>(c: AxiosInstance, pfad: string): Promise<T> {
 }
 
 /** Aktueller Schuljahresabschnitt einer Datenbank */
-async function ladeAbschnitt(c: AxiosInstance): Promise<{ id: number, schuljahr: number, abschnitt: number }> {
+export async function ladeAbschnitt(c: AxiosInstance): Promise<{ id: number, schuljahr: number, abschnitt: number }> {
   const st = await get(c, '/schule/stammdaten')
   return (st.abschnitte as { id: number, schuljahr: number, abschnitt: number }[]).find(a => a.id === st.idSchuljahresabschnitt)!
 }
@@ -81,7 +88,7 @@ const KATALOGE: Record<KatalogName, { lesen: string, anlegen: string, body: (e: 
 }
 
 /** Legt in der KOOP-DB die Vereinigung der Kataloge aller Quell-DBs an */
-async function vereinigeKataloge(koop: AxiosInstance, quellen: QuellKontext[], protokoll: Protokoll, fortschritt: Fortschritt): Promise<void> {
+export async function vereinigeKataloge(koop: AxiosInstance, quellen: QuellKontext[], protokoll: Protokoll, fortschritt: Fortschritt): Promise<void> {
   for (const [name, def] of Object.entries(KATALOGE) as [KatalogName, typeof KATALOGE[KatalogName]][]) {
     fortschritt(`Katalog ${name}`)
     const quellKataloge = await Promise.all(quellen.map(q => get<Roh[]>(q.client, def.lesen)))
@@ -220,14 +227,16 @@ export async function bereiteKoopVor(koop: AxiosInstance, quellen: QuellKontext[
 
 // ── 2. Lehrkräfte ────────────────────────────────────────────────────────────
 
-/** Übernimmt die aktiven Lehrkräfte aller Quell-DBs (ADR 002, A10) */
-export async function uebernehmeLehrkraefte(koop: AxiosInstance, quellen: QuellKontext[], fortschritt: Fortschritt): Promise<Protokoll> {
+/** Übernimmt die aktiven Lehrkräfte aller Quell-DBs (ADR 002, A10), mit Auswahl nur diese */
+export async function uebernehmeLehrkraefte(koop: AxiosInstance, quellen: QuellKontext[], fortschritt: Fortschritt, auswahl?: Auswahl): Promise<Protokoll> {
   const protokoll = new Protokoll()
   const abschnitt = await ladeAbschnitt(koop)
   for (const q of quellen) {
     const kataloge = await ladeKatalogZuordnungen(koop, q.client)
     const katalogKuerzel = new Set((await get<Roh[]>(q.client, '/schule/schulen')).map(s => s.kuerzel).filter(Boolean) as string[])
-    const lehrer = (await get<Roh[]>(q.client, '/lehrer/')).filter(l => l.istSichtbar)
+    const lehrer = (await get<Roh[]>(q.client, '/lehrer/'))
+      .filter(l => l.istSichtbar && (!auswahl || auswahl.has(auswahlSchluessel(q.info.nr, l.id))))
+    if (lehrer.length === 0) continue
     const koopLehrer = new Map((await get<Roh[]>(koop, '/lehrer/')).map(l => [l.kuerzel as string, l.id as number]))
     await parallel(lehrer, PARALLEL_SCHREIBEN, async (l, i) => {
       fortschritt(`Schule ${q.info.nr}: Lehrkraft ${l.kuerzel}`, i + 1, lehrer.length)
@@ -304,7 +313,7 @@ async function ladeVorhandeneSchueler(koop: AxiosInstance, abschnittId: number):
  * mit Stammdaten, Erziehern, Telefonnummern, Sprachenfolge und Fachwahlen (ADR 002, A9–A12).
  * Bereits übernommene Schüler erhalten nur aktualisierte Stammdaten, ihre Fachwahlen werden nicht überschrieben (A21).
  */
-export async function uebernehmeSchueler(koop: AxiosInstance, quellen: QuellKontext[], fortschritt: Fortschritt): Promise<Protokoll> {
+export async function uebernehmeSchueler(koop: AxiosInstance, quellen: QuellKontext[], fortschritt: Fortschritt, auswahl?: Auswahl): Promise<Protokoll> {
   const protokoll = new Protokoll()
   const abschnitt = await ladeAbschnitt(koop)
   const koopJahrgaenge = new Map((await get<Roh[]>(koop, '/jahrgaenge/')).map(j => [j.kuerzel as string, j.id as number]))
@@ -313,13 +322,14 @@ export async function uebernehmeSchueler(koop: AxiosInstance, quellen: QuellKont
   const vorhanden = await ladeVorhandeneSchueler(koop, abschnitt.id)
 
   for (const q of quellen) {
+    if (auswahl && ![...auswahl].some(k => k.startsWith(`${q.info.nr}|`))) continue
     fortschritt(`Schule ${q.info.nr}: Daten laden`)
     const kataloge = await ladeKatalogZuordnungen(koop, q.client)
     const quellAbschnitt = await ladeAbschnitt(q.client)
     const quellFaecher = new Map((await get<Roh[]>(q.client, '/faecher/')).map(f => [f.id as number, f.kuerzel as string]))
     const quellKlassen = new Map((await get<Roh[]>(q.client, `/klassen/minimal/abschnitt/${quellAbschnitt.id}`)).map(k => [k.id as number, k.kuerzel as string]))
     const schueler = (await get<Roh[]>(q.client, `/schueler/abschnitt/${quellAbschnitt.id}`))
-      .filter(s => (BETROFFENE_JAHRGAENGE as readonly string[]).includes(s.jahrgang) && UEBERNAHME_STATUS.has(s.status))
+      .filter(s => istUebernahmeSchueler(s as { jahrgang: string, status: number }) && (!auswahl || auswahl.has(auswahlSchluessel(q.info.nr, s.id))))
 
     await parallel(schueler, PARALLEL_SCHREIBEN, async (s, i) => {
       fortschritt(`Schule ${q.info.nr}: ${s.nachname}, ${s.vorname}`, i + 1, schueler.length)

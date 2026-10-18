@@ -46,6 +46,17 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 - [ ] Offen: Fachwahlen vergangener Halbjahre fehlen in der KOOP-DB (Server verlangt dafür Lernabschnitte, ADR 003, Abschnitt 7)
 - [x] Dauer verkürzen: parallel schreiben mit Wiederholung und Jitter bei 500 (Race Condition des Servers)
 
+### 3a. Nachladen (A21) – umgesetzt
+
+- [x] Abgleich jeder Quell-DB mit der KOOP-DB, vorher Konsistenzprüfung
+- [x] Neue Schüler und Lehrkräfte nachladen (gleiche Logik wie die Übernahme, Kataloge werden vorher ergänzt)
+- [x] Abgegangene Schüler (fehlt, anderer Jahrgang, anderer Status) und Lehrkräfte (fehlt, nicht mehr aktiv) melden
+- [x] Abgegangene Schüler entfernen: Kurszuordnungen in allen Blockungsergebnissen und Leistungsdaten löschen, dann Löschvermerk (zählt dann nicht mehr zum Abiturjahrgang)
+- [x] Abgegangene Lehrkräfte entfernen: aus Blockungskursen und Kursen nehmen, unsichtbar setzen
+- [ ] Endgültiges Löschen von Schülern, sobald der Endpunkt wieder da ist (Issue 01)
+- [ ] Rückkehrer: Schüler mit Löschvermerk, der wieder in der Quell-DB auftaucht, wird heute neu angelegt statt reaktiviert
+- [ ] Backup einer Schule direkt in der Ansicht einspielen (heute über den Admin-Client)
+
 ### 4. Rückspielung (Phase 4)
 
 - [ ] Prüfungen: zu altes Backup, in der Stammschule geänderte Fachwahlen
@@ -56,7 +67,7 @@ Die Reihenfolge folgt dem Ablauf aus ADR 002. Jeder Schritt ist für sich nutzba
 
 ### 5. Abrunden
 
-- [ ] Nachladen, Übersicht der KOOP-DB, Protokolle
+- [ ] Übersicht der KOOP-DB, Protokolle
 - [ ] App-Icon
 - [ ] Electron-Build und erstes Release 0.1.0
 - [ ] Aufnahme in [SVWS-Tools](https://github.com/SVWS-NRW/SVWS-Tools)

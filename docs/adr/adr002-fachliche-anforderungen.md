@@ -70,7 +70,10 @@ Der technische Rahmen ist in [ADR 001](adr001-architektur-und-erscheinungsbild.m
 - **A21** Es gibt eine Funktion zum **Nachladen**, auch nachdem die Blockung begonnen hat. Dazu spielt die Schule ein neueres Backup ein. SVWS-KOOP vergleicht es mit der KOOP-DB und zeigt an:
   - **neue Schüler** (in der Stammschule, aber nicht in der KOOP-DB): werden mit Stammdaten, Erzieherdaten und Fachwahlen nachgeladen,
   - **neue Lehrkräfte**: werden nachgeladen,
-  - **abgegangene Schüler** (in der KOOP-DB, aber in der Stammschule nicht mehr im betroffenen Jahrgang): werden gemeldet. SVWS-KOOP bietet an, sie aus der KOOP-DB zu entfernen, einschließlich ihrer Kurszuordnungen.
+  - **abgegangene Schüler** (in der KOOP-DB, aber in der Stammschule nicht mehr im betroffenen Jahrgang, mit Status Abgang, Abschluss o. Ä. oder mit Löschvermerk): werden gemeldet. SVWS-KOOP bietet an, sie aus der KOOP-DB zu entfernen, einschließlich ihrer Kurszuordnungen. Beurlaubte Schüler gelten nicht als abgegangen,
+  - **abgegangene Lehrkräfte** (in der Stammschule unsichtbar oder nicht mehr vorhanden): werden gemeldet. SVWS-KOOP bietet an, sie aus den Kursen zu nehmen.
+
+  **Entfernen (2026-10-18):** Ein Status Abgang oder Abschluss reicht in der KOOP-DB nicht. Der SVWS-Server zählt solche Schüler weiter zum Abiturjahrgang, wenn sie in der Oberstufe entlassen wurden, und berücksichtigt sie in der Blockung des laufenden Halbjahres (`GostSchuelerService`, `DBUtilsGost.pruefeIstAnSchule`). Schüler mit **Löschvermerk** schließt er dagegen immer aus. SVWS-KOOP entfernt deshalb die Kurszuordnungen des Schülers in allen Blockungsergebnissen und die Leistungsdaten mit Kurs und setzt danach den Löschvermerk. Endgültig gelöscht wird erst, wenn der Server den Endpunkt wieder anbietet (ADR 003, Meldung 4). Lehrkräfte werden aus Blockungskursen und Kursen genommen und unsichtbar gesetzt, aber nicht gelöscht.
 
   Fachwahlen bereits übernommener Schüler werden beim Nachladen **nicht** überschrieben, weil sie ab der Übernahme nur in der KOOP-DB gepflegt werden (siehe „Änderungen außerhalb der KOOP-DB“).
 - **A13** Jeder Lauf erzeugt ein **Protokoll** (übernommene, geänderte, übersprungene Datensätze und Fehler).

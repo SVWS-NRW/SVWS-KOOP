@@ -8,7 +8,7 @@ SVWS-KOOP gehört zur Familie der [SVWS-Tools](https://github.com/SVWS-NRW/SVWS-
 
 ## Projektstatus
 
-**Phase 1 umgesetzt.** Architektur, fachliche Anforderungen und die Prüfung der SVWS-API sind beschlossen ([ADR 001](docs/adr/adr001-architektur-und-erscheinungsbild.md), [ADR 002](docs/adr/adr002-fachliche-anforderungen.md), [ADR 003](docs/adr/adr003-pruefung-svws-api.md)). Umgesetzt sind der Assistent „KOOP-DB einrichten“ (auf der Anmeldeseite), die Konsistenzprüfung und die Übernahme von Lehrkräften und Schülern. Rückspielung, Nachladen, Übersicht und Protokolle sind in Vorbereitung.
+**Phase 1 umgesetzt.** Architektur, fachliche Anforderungen und die Prüfung der SVWS-API sind beschlossen ([ADR 001](docs/adr/adr001-architektur-und-erscheinungsbild.md), [ADR 002](docs/adr/adr002-fachliche-anforderungen.md), [ADR 003](docs/adr/adr003-pruefung-svws-api.md)). Umgesetzt sind der Assistent „KOOP-DB einrichten“ (auf der Anmeldeseite), die Konsistenzprüfung, die Übernahme von Lehrkräften und Schülern und das Nachladen neuer Schüler und Lehrkräfte. Rückspielung, Übersicht und Protokolle sind in Vorbereitung.
 
 ## So funktioniert es
 
@@ -74,7 +74,7 @@ Projektstruktur (ADR 001, Abschnitt 2):
 
 ```
 src/
-├── views/        Seiten (Anmeldung, Einrichten, Dashboard, Konsistenz, Übernahme)
+├── views/        Seiten (Anmeldung, Einrichten, Dashboard, Konsistenz, Übernahme, Nachladen)
 ├── components/   ThemeToggle, LegalFooter
 ├── stores/       Pinia-Stores
 ├── services/     apiClient (mehrere Verbindungen), svwsService, errorService
